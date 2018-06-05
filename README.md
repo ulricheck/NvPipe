@@ -208,3 +208,20 @@ NvPipe has been successfully tested on:
 | NVIDIA Tesla P100 | 375.74 | 8.0  | Cray (SLES 12.2) | x86_64       |
 | NVIDIA GeForce GTX 1080 | 382.53 | 8.0  | Windows 7 | x86_64       |
 
+
+
+Publication
+===================
+
+NvPipe was successfully used in the EGPGV 2018 best paper *Hardware-Accelerated Multi-Tile Streaming for Realtime Remote Visualization*, which is available [here](http://biedert.de/publications/Streaming-EGPGV2018.pdf).
+
+
+
+Feedback
+===================
+
+Feedback welcome! We would love to hear more about your use cases of NvPipe!
+
+If you have any questions, feature requests, issues, or ideas for improvement, please feel free to reach out at [tbiedert@nvidia.com](mailto:tbiedert@nvidia.com).
+
+
