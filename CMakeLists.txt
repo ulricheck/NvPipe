@@ -25,7 +25,18 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 cmake_minimum_required(VERSION 3.2)
-project(NvPipe CXX)
+project(NvPipe VERSION 1.0.0 LANGUAGES CXX)
+
+SET(DEFAULT_BUILD_TYPE "Release")
+
+if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
+  message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
+  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE
+      STRING "Choose the type of build." FORCE)
+  # Set the possible values of build type for cmake-gui
+  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+    "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+endif()
 
 find_package(CUDA REQUIRED)
 
@@ -38,8 +49,8 @@ option(NVPIPE_WITH_DECODER "Enables the NvPipe decoding interface." ON)
 option(NVPIPE_BUILD_EXAMPLES "Builds the NvPipe example applications (requires both encoder and decoder)." ON)
 
 # Header
-configure_file(src/NvPipe.h.in NvPipe.h @ONLY)
-include_directories(${CMAKE_BINARY_DIR})
+configure_file(src/NvPipe.h.in include/NvPipe.h @ONLY)
+include_directories(${CMAKE_BINARY_DIR}/include)
 
 # NvPipe shared library
 list(APPEND NVPIPE_SOURCES
@@ -68,27 +79,43 @@ if (NVPIPE_WITH_DECODER)
         )
 endif()
 
-cuda_add_library(NvPipe SHARED ${NVPIPE_SOURCES})
-target_include_directories(NvPipe PUBLIC src/NvCodec ${CUDA_INCLUDE_DIRS})
-target_link_libraries(NvPipe ${NVPIPE_LIBRARIES})
+include(GNUInstallDirs)
 
-install(TARGETS NvPipe DESTINATION lib)
-install(FILES ${CMAKE_BINARY_DIR}/NvPipe.h DESTINATION include)
+cuda_add_library(${PROJECT_NAME} SHARED ${NVPIPE_SOURCES})
+target_include_directories(${PROJECT_NAME} PUBLIC  
+    $<BUILD_INTERFACE:src/NvCodec ${CUDA_INCLUDE_DIRS}>  
+    $<INSTALL_INTERFACE:include>
+)
+target_link_libraries(${PROJECT_NAME} ${NVPIPE_LIBRARIES})
+
+set_target_properties(${PROJECT_NAME} PROPERTIES
+    VERSION ${PROJECT_VERSION}
+    SOVERSION 1)
+
+install(TARGETS ${PROJECT_NAME} EXPORT NvPipeConfig
+    ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})
+install(FILES ${CMAKE_BINARY_DIR}/include/NvPipe.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+
+install(EXPORT NvPipeConfig DESTINATION share/NvPipe/cmake)
+
+export(TARGETS ${PROJECT_NAME} FILE NvPipeConfig.cmake)
 
 # Examples
 if (NVPIPE_BUILD_EXAMPLES)
     # Encode to / decode from file
     add_executable(nvpExampleFile examples/file.cpp)
-    target_link_libraries(nvpExampleFile PRIVATE NvPipe)
+    target_link_libraries(nvpExampleFile PRIVATE ${PROJECT_NAME})
 
     if (NVPIPE_WITH_ENCODER AND NVPIPE_WITH_DECODER)
         # Host/device memory comparison
         add_executable(nvpExampleMemory examples/memory.cpp)
-        target_link_libraries(nvpExampleMemory PRIVATE NvPipe)
+        target_link_libraries(nvpExampleMemory PRIVATE ${PROJECT_NAME})
 
         # Lossless test
         add_executable(nvpExampleLossless examples/lossless.cpp)
-        target_link_libraries(nvpExampleLossless PRIVATE NvPipe)
+        target_link_libraries(nvpExampleLossless PRIVATE ${PROJECT_NAME})
 
         # EGL demo
         list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/examples/cmake)
@@ -99,7 +126,7 @@ if (NVPIPE_BUILD_EXAMPLES)
         if (EGL_FOUND AND GLEW_FOUND)
             add_executable(nvpExampleEGL examples/egl.cpp)
             target_include_directories(nvpExampleEGL PRIVATE ${EGL_INCLUDE_DIR} ${GLEW_INCLUDE_DIR})
-            target_link_libraries(nvpExampleEGL PRIVATE NvPipe ${EGL_LIBRARIES} ${GLEW_LIBRARIES})
+            target_link_libraries(nvpExampleEGL PRIVATE ${PROJECT_NAME} ${EGL_LIBRARIES} ${GLEW_LIBRARIES})
         endif()
     endif()
 endif()
