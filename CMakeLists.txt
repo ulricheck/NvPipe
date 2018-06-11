@@ -50,7 +50,7 @@ option(NVPIPE_BUILD_EXAMPLES "Builds the NvPipe example applications (requires b
 
 # Header
 configure_file(src/NvPipe.h.in include/NvPipe.h @ONLY)
-#include_directories(${CMAKE_BINARY_DIR}/include)
+include_directories(${CMAKE_BINARY_DIR}/include)
 
 # NvPipe shared library
 list(APPEND NVPIPE_SOURCES
