@@ -33,6 +33,7 @@
 
 #cmakedefine NVPIPE_WITH_ENCODER
 #cmakedefine NVPIPE_WITH_DECODER
+#cmakedefine NVPIPE_WITH_OPENGL
 
 #ifdef _WIN32
 #	define NVPIPE_EXPORT __declspec(dllexport)
@@ -102,6 +103,8 @@ NVPIPE_EXPORT NvPipe* NvPipe_CreateEncoder(NvPipe_Format format, NvPipe_Codec co
 NVPIPE_EXPORT uint64_t NvPipe_Encode(NvPipe* nvp, const void* src, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height);
 
 
+#ifdef NVPIPE_WITH_OPENGL
+
 /**
  * @brief encodeTexture Encodes a single frame from an OpenGL texture.
  * @param nvp Encoder instance.
@@ -130,6 +133,8 @@ NVPIPE_EXPORT uint64_t NvPipe_EncodePBO(NvPipe* nvp, uint32_t pbo, uint8_t* dst,
 
 #endif
 
+#endif
+
 #ifdef NVPIPE_WITH_DECODER
 
 /**
@@ -153,6 +158,8 @@ NVPIPE_EXPORT NvPipe* NvPipe_CreateDecoder(NvPipe_Format format, NvPipe_Codec co
  */
 NVPIPE_EXPORT uint64_t NvPipe_Decode(NvPipe* nvp, const uint8_t* src, uint64_t srcSize, void* dst, uint32_t width, uint32_t height);
 
+
+#ifdef NVPIPE_WITH_OPENGL
 
 /**
  * @brief Decodes a single frame to an OpenGL texture.
@@ -179,6 +186,8 @@ NVPIPE_EXPORT uint64_t NvPipe_DecodeTexture(NvPipe* nvp, const uint8_t* src, uin
  * @return Size of decoded data in bytes or 0 on error.
  */
 NVPIPE_EXPORT uint64_t NvPipe_DecodePBO(NvPipe* nvp, const uint8_t* src, uint64_t srcSize, uint32_t pbo, uint32_t width, uint32_t height);
+
+#endif
 
 #endif
 

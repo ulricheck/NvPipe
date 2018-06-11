@@ -45,7 +45,10 @@
 
 #include <cuda.h>
 #include <cuda_runtime_api.h>
+
+#ifdef NVPIPE_WITH_OPENGL
 #include <cuda_gl_interop.h>
+#endif
 
 
 class Exception
@@ -230,6 +233,7 @@ void nv12_to_uint16(const uint8_t* src, uint32_t srcPitch, uint8_t* dst, uint32_
 
 
 
+#ifdef NVPIPE_WITH_OPENGL
 /**
  * @brief Utility class for managing CUDA-GL interop graphics resources.
  */
@@ -313,6 +317,7 @@ private:
     };
     std::unordered_map<uint32_t, RegisteredPBO> registeredPBOs;
 };
+#endif
 
 
 #ifdef NVPIPE_WITH_ENCODER
@@ -399,6 +404,8 @@ public:
         return this->encode(dst, dstSize);
     }
 
+#ifdef NVPIPE_WITH_OPENGL
+
     uint64_t encodeTexture(uint32_t texture, uint32_t target, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height)
     {
         if (this->format != NVPIPE_RGBA32)
@@ -450,6 +457,8 @@ public:
 
         return size;
     }
+
+#endif
 
 private:
     void recreate(uint32_t width, uint32_t height)
@@ -577,7 +586,9 @@ private:
     void* deviceBuffer = nullptr;
     uint64_t deviceBufferSize = 0;
 
+#ifdef NVPIPE_WITH_OPENGL
     GraphicsResourceRegistry registry;
+#endif
 };
 #endif
 
@@ -665,6 +676,8 @@ public:
         return 0;
     }
 
+#ifdef NVPIPE_WITH_OPENGL
+
     uint64_t decodeTexture(const uint8_t* src, uint64_t srcSize, uint32_t texture, uint32_t target, uint32_t width, uint32_t height)
     {
         if (this->format != NVPIPE_RGBA32)
@@ -723,6 +736,8 @@ public:
 
         return size;
     }
+
+#endif
 
 private:
     void recreate(uint32_t width, uint32_t height)
@@ -802,7 +817,9 @@ private:
     void* deviceBuffer = nullptr;
     uint64_t deviceBufferSize = 0;
 
+#ifdef NVPIPE_WITH_OPENGL
     GraphicsResourceRegistry registry;
+#endif
 };
 
 #endif
@@ -871,6 +888,8 @@ NVPIPE_EXPORT uint64_t NvPipe_Encode(NvPipe* nvp, const void* src, uint8_t* dst,
     }
 }
 
+#ifdef NVPIPE_WITH_OPENGL
+
 NVPIPE_EXPORT uint64_t NvPipe_EncodeTexture(NvPipe* nvp, uint32_t texture, uint32_t target, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height)
 {
     Instance* instance = static_cast<Instance*>(nvp);
@@ -910,6 +929,8 @@ NVPIPE_EXPORT uint64_t NvPipe_EncodePBO(NvPipe* nvp, uint32_t pbo, uint8_t* dst,
         return 0;
     }
 }
+
+#endif
 
 #endif
 
@@ -953,6 +974,8 @@ NVPIPE_EXPORT uint64_t NvPipe_Decode(NvPipe* nvp, const uint8_t* src, uint64_t s
     }
 }
 
+#ifdef NVPIPE_WITH_OPENGL
+
 NVPIPE_EXPORT uint64_t NvPipe_DecodeTexture(NvPipe* nvp, const uint8_t* src, uint64_t srcSize, uint32_t texture, uint32_t target, uint32_t width, uint32_t height)
 {
     Instance* instance = static_cast<Instance*>(nvp);
@@ -992,6 +1015,8 @@ NVPIPE_EXPORT uint64_t NvPipe_DecodePBO(NvPipe* nvp, const uint8_t* src, uint64_
         return 0;
     }
 }
+
+#endif
 
 #endif
 

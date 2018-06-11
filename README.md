@@ -97,6 +97,8 @@ make install
 
 It is possible to compile the encoding or decoding interface only using the `NVPIPE_WITH_ENCODER` and `NVPIPE_WITH_DECODER` options (default: `ON`).
 
+The OpenGL interface is optional and can be disabled using the `NVPIPE_WITH_OPENGL` option (default: `ON`).
+
 The compilation of the included sample applications can be controlled via the `NVPIPE_BUILD_EXAMPLES` CMake option (default: `ON`).
 
 Only shared libraries are supported.

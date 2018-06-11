@@ -30,12 +30,12 @@ project(NvPipe VERSION 1.0.0 LANGUAGES CXX)
 SET(DEFAULT_BUILD_TYPE "Release")
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
-  message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
-  set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE
-      STRING "Choose the type of build." FORCE)
-  # Set the possible values of build type for cmake-gui
-  set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
-    "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
+    message(STATUS "Setting build type to '${DEFAULT_BUILD_TYPE}' as none was specified.")
+    set(CMAKE_BUILD_TYPE "${DEFAULT_BUILD_TYPE}" CACHE
+        STRING "Choose the type of build." FORCE)
+    # Set the possible values of build type for cmake-gui
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS
+        "Debug" "Release" "MinSizeRel" "RelWithDebInfo")
 endif()
 
 find_package(CUDA REQUIRED)
@@ -46,6 +46,7 @@ list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
 # Options
 option(NVPIPE_WITH_ENCODER "Enables the NvPipe encoding interface." ON)
 option(NVPIPE_WITH_DECODER "Enables the NvPipe decoding interface." ON)
+option(NVPIPE_WITH_OPENGL "Enables the NvPipe OpenGL interface." ON)
 option(NVPIPE_BUILD_EXAMPLES "Builds the NvPipe example applications (requires both encoder and decoder)." ON)
 
 # Header
@@ -83,9 +84,9 @@ include(GNUInstallDirs)
 
 cuda_add_library(${PROJECT_NAME} SHARED ${NVPIPE_SOURCES})
 target_include_directories(${PROJECT_NAME} PUBLIC  
-    $<BUILD_INTERFACE:src/NvCodec ${CUDA_INCLUDE_DIRS}>  
+    $<BUILD_INTERFACE:src/NvCodec ${CUDA_INCLUDE_DIRS}>
     $<INSTALL_INTERFACE:include>
-)
+    )
 target_link_libraries(${PROJECT_NAME} ${NVPIPE_LIBRARIES})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -118,15 +119,17 @@ if (NVPIPE_BUILD_EXAMPLES)
         target_link_libraries(nvpExampleLossless PRIVATE ${PROJECT_NAME})
 
         # EGL demo
-        list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/examples/cmake)
+        if (NVPIPE_WITH_OPENGL)
+            list(APPEND CMAKE_MODULE_PATH ${PROJECT_SOURCE_DIR}/examples/cmake)
 
-        find_package(EGL)
-        find_package(GLEW)
+            find_package(EGL)
+            find_package(GLEW)
 
-        if (EGL_FOUND AND GLEW_FOUND)
-            add_executable(nvpExampleEGL examples/egl.cpp)
-            target_include_directories(nvpExampleEGL PRIVATE ${EGL_INCLUDE_DIR} ${GLEW_INCLUDE_DIR})
-            target_link_libraries(nvpExampleEGL PRIVATE ${PROJECT_NAME} ${EGL_LIBRARIES} ${GLEW_LIBRARIES})
+            if (EGL_FOUND AND GLEW_FOUND)
+                add_executable(nvpExampleEGL examples/egl.cpp)
+                target_include_directories(nvpExampleEGL PRIVATE ${EGL_INCLUDE_DIR} ${GLEW_INCLUDE_DIR})
+                target_link_libraries(nvpExampleEGL PRIVATE ${PROJECT_NAME} ${EGL_LIBRARIES} ${GLEW_LIBRARIES})
+            endif()
         endif()
     endif()
 endif()
