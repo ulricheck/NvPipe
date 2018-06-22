@@ -775,7 +775,8 @@ private:
         try
         {
             // Some cuvid implementations have one frame latency. Refeed frame into pipeline in this case.
-            while (numFramesDecoded <= 0)
+            const uint32_t DECODE_TRIES = 3;
+            for (uint32_t i = 0; (i < DECODE_TRIES) && (numFramesDecoded <= 0); ++i)
                 this->decoder->Decode(src, srcSize, &decodedFrames, &numFramesDecoded, CUVID_PKT_ENDOFPICTURE, &timeStamps, this->n++);
         }
         catch (NVDECException& e)
@@ -784,7 +785,9 @@ private:
         }
 
         if (numFramesDecoded <= 0)
-            return nullptr;
+        {
+            throw Exception("No frame decoded (Decoder expects encoded bitstream for a single complete frame. Accumulating partial data or combining multiple frames is not supported.)");
+        }
 
         return decodedFrames[numFramesDecoded - 1];
     }

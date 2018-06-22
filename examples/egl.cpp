@@ -212,6 +212,8 @@ int main(int argc, char* argv[])
         glMatrixMode(GL_MODELVIEW);
         glLoadIdentity();
 
+        glRotatef((float) i, 0.0f, 0.0f, 1.0f);
+
         glBegin(GL_TRIANGLES);
         glColor3f(1.0f, 0.0f, 0.0f);
         glVertex3f(0.0f, -0.9f, 0.0f);
@@ -221,10 +223,9 @@ int main(int argc, char* argv[])
         glVertex3f(0.9f, 0.9f, 0.0f);
         glEnd();
 
-        if (i == 0)
-            captureFramebufferPPM(serverFBO, width, height, "egl-input.ppm");
+        glFinish(); // Make sure rendering is complete before grabbing frame
 
-
+        captureFramebufferPPM(serverFBO, width, height, "egl-input" + std::to_string(i) + ".ppm");
 
         // Encode
         std::vector<uint8_t> compressed(width * height * 4);
@@ -259,9 +260,7 @@ int main(int argc, char* argv[])
         glBindVertexArray(clientFullscreenVAO);
         glDrawArrays(GL_POINTS, 0, 1);
 
-
-        if (i == 0)
-            captureFramebufferPPM(0, width, height, "egl-output.ppm");
+        captureFramebufferPPM(0, width, height, "egl-output" + std::to_string(i) + ".ppm");
     }
 
     // Clean up
