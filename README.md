@@ -162,20 +162,19 @@ Codec: H.264
 Bitrate: 32 Mbps @ 90 Hz
 
 Frame | Encode (ms) | Decode (ms) | Size (KB)
-    0 |        51.1 |        35.1 |     44.6
-    1 |        10.8 |         6.7 |      1.2
-    2 |        10.7 |         6.8 |      0.3
-    3 |        10.6 |         6.8 |      0.3
-    4 |        10.8 |         6.8 |      0.3
-    5 |        10.9 |         6.7 |      0.3
-    6 |        10.7 |         6.8 |      0.3
-    7 |        10.6 |         6.8 |      0.3
-    8 |        10.7 |         6.8 |      0.3
-    9 |        11.7 |         6.8 |      0.3
-
+    0 |        54.4 |        36.4 |     38.5
+    1 |        11.8 |         7.5 |     29.4
+    2 |        11.9 |         7.4 |     28.5
+    3 |        11.8 |         7.5 |     28.0
+    4 |        11.9 |         7.4 |     27.8
+    5 |        11.9 |         7.5 |     27.8
+    6 |        11.8 |         7.5 |     27.7
+    7 |        11.9 |         7.5 |     27.4
+    8 |        11.9 |         7.4 |     27.4
+    9 |        11.8 |         7.5 |     27.6
 ```
 
-Note that the overall compressed sizes differ in the two examples as they use different images for input. The black background in the `egl` example allows for more efficient compression.
+Note that the overall compressed sizes differ in the two examples as they use different images for input. 
 
 The `lossless` example demonstrates the usage of NvPipe for lossless integer data compression. An 8 bit unsigned integer frame is created, compressed, and the result verified for bitwise correctness after decompression.
 The following example output shows that while correctness is always guarenteed due to lossless compression, the chosen pixel format has crucial impact on the compressed output size.
