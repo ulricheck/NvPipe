@@ -43,6 +43,9 @@ void test(const uint8_t* data, NvPipe_Format format, uint32_t width, uint32_t he
         dataSize /= 2;
     else if (format == NVPIPE_UINT16)
         dataSize *= 2;
+    else if (format == NVPIPE_UINT32)
+        dataSize *= 4;
+
 
     Timer timer;
 
@@ -126,6 +129,8 @@ void test(const uint8_t* data, NvPipe_Format format, uint32_t width, uint32_t he
         std::cout << " - [as UINT8] ";
     else if (format == NVPIPE_UINT16)
         std::cout << " - [as UINT16] ";
+    else if (format == NVPIPE_UINT32)
+        std::cout << " - [as UINT32] ";
 
     std::cout << std::fixed << std::setprecision(1) << " Size: " << size * 0.001 << " KB, Encode: " << encodeMs << " ms, Decode: " << decodeMs << " ms - ";
 
@@ -143,16 +148,37 @@ int main(int argc, char* argv[])
     uint32_t width = 1024;
     uint32_t height = 1024;
 
-    // Dummy input
-    std::vector<uint8_t> image(width * height);
-    for (uint32_t y = 0; y < height; ++y)
-        for (uint32_t x = 0; x < width; ++x)
-            image[y * width + x] = (255.0f * x * y) / (width * height) * (y % 100 < 50);
+    // UINT 8 test
+    {
+        std::vector<uint8_t> image(width * height);
+        for (uint32_t y = 0; y < height; ++y)
+            for (uint32_t x = 0; x < width; ++x)
+                image[y * width + x] = (255.0f * x * y) / (width * height) * (y % 100 < 50);
 
-    std::cout << std::fixed << std::setprecision(1) << "Input: " << width << " x " << height << " UINT8 (Raw size: " << (width * height)  * 0.001 << " KB)" << std::endl;
-    test(image.data(), NVPIPE_UINT4, width * 2, height);
-    test(image.data(), NVPIPE_UINT8, width, height);
-    test(image.data(), NVPIPE_UINT16, width / 2, height);
+        std::cout << std::fixed << std::setprecision(1) << "Input: " << width << " x " << height << " UINT8 (Raw size: " << (width * height)  * 0.001 << " KB)" << std::endl;
+        test(image.data(), NVPIPE_UINT4, width * 2, height);
+        test(image.data(), NVPIPE_UINT8, width, height);
+        test(image.data(), NVPIPE_UINT16, width / 2, height);
+        test(image.data(), NVPIPE_UINT32, width / 4, height);
+    }
+
+    std::cout << std::endl;
+
+
+    // UINT32 test
+    {
+        std::vector<uint32_t> image(width * height);
+        for (uint32_t y = 0; y < height; ++y)
+            for (uint32_t x = 0; x < width; ++x)
+                image[y * width + x] = (4294967295.0f * x * y) / (width * height) * (y % 100 < 50);
+
+        std::cout << std::fixed << std::setprecision(1) << "Input: " << width << " x " << height << " UINT32 (Raw size: " << (width * height * 4)  * 0.001 << " KB)" << std::endl;
+//        test((uint8_t*) image.data(), NVPIPE_UINT4, width * 8, height);
+        test((uint8_t*) image.data(), NVPIPE_UINT8, width * 4, height);
+        test((uint8_t*) image.data(), NVPIPE_UINT16, width * 2, height);
+        test((uint8_t*) image.data(), NVPIPE_UINT32, width, height);
+    }
+
 
     return 0;
 }

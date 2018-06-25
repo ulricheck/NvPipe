@@ -7,7 +7,7 @@ networked interactive server/client application.
 
 Designed for both remote rendering solutions and general compression of arbitrary image data, NvPipe accepts frames in various formats and supports access to host memory, CUDA device memory, OpenGL textures and OpenGL pixel buffer objects. 
 
-Supported formats are 32 bit RGBA frames (8 bit per channel; alpha is not supported by the underlying video codecs and is ignored) and unsigned integer grayscale frames with 4 bit, 8 bit or 16 bit per pixel.
+Supported formats are 32 bit RGBA frames (8 bit per channel; alpha is not supported by the underlying video codecs and is ignored) and unsigned integer grayscale frames with 4 bit, 8 bit, 16 bit or 32 bit per pixel.
 
 Besides conventional lossy video compression based on target bitrate and framerate, also fully lossless compression is available enabling exact bit pattern reconstruction.
 

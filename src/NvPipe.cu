@@ -85,6 +85,8 @@ inline uint64_t getFrameSize(NvPipe_Format format, uint32_t width, uint32_t heig
         return width * height;
     else if (format == NVPIPE_UINT16)
         return width * height * 2;
+    else if (format == NVPIPE_UINT32)
+        return width * height * 4;
 
     return 0;
 }
@@ -106,14 +108,12 @@ void uint4_to_nv12(const uint8_t* src, uint32_t srcPitch, uint8_t* dst, uint32_t
         // Even thread: higher 4 bits, odd thread: lower 4 bits
         dst[j] = (x & 1 == 1) ? (src[i] & 0xF) : ((src[i] & 0xF0) >> 4);
 
-        // Blank UV channel (kill 3 of 4 threads)
-        if(x & 1 == 1 || y & 1 == 1)
-            return;
-
-        uint8_t* UV = dst + dstPitch * height;
-        const uint32_t k = y / 2 * (dstPitch / 2) + x / 2;
-        UV[2 * k + 0] = 0;
-        UV[2 * k + 1] = 0;
+        // Blank UV channel
+        if (y < height / 2)
+        {
+            uint8_t* UV = dst + dstPitch * (height + y);
+            UV[x] = 0;
+        }
     }
 }
 
@@ -153,14 +153,12 @@ void uint8_to_nv12(const uint8_t* src, uint32_t srcPitch, uint8_t* dst, uint32_t
         // Copy grayscale image to Y channel
         dst[j] = src[i];
 
-        // Blank UV channel (kill 3 of 4 threads)
-        if(x & 1 == 1 || y & 1 == 1)
-            return;
-
-        uint8_t* UV = dst + dstPitch * height;
-        const uint32_t k = y / 2 * (dstPitch / 2) + x / 2;
-        UV[2 * k + 0] = 0;
-        UV[2 * k + 1] = 0;
+        // Blank UV channel
+        if (y < height / 2)
+        {
+            uint8_t* UV = dst + dstPitch * (height + y);
+            UV[x] = 0;
+        }
     }
 }
 
@@ -198,17 +196,13 @@ void uint16_to_nv12(const uint8_t* src, uint32_t srcPitch, uint8_t* dst, uint32_
         // Copy lower byte to right half of Y channel
         dst[j + width] = src[i + 1];
 
-
-        // Blank UV channel (kill 3 of 4 threads)
-        if(x & 1 == 1 || y & 1 == 1)
-            return;
-
-        uint8_t* UV = dst + dstPitch * height;
-        const uint32_t k = y / 2 * (dstPitch / 2) + x / 2;
-        UV[4 * k + 0] = 0;
-        UV[4 * k + 1] = 0;
-        UV[4 * k + 2] = 0;
-        UV[4 * k + 3] = 0;
+        // Blank UV channel
+        if (y < height / 2)
+        {
+            uint8_t* UV = dst + dstPitch * (height + y);
+            UV[2 * x + 0] = 0;
+            UV[2 * x + 1] = 0;
+        }
     }
 }
 
@@ -231,7 +225,58 @@ void nv12_to_uint16(const uint8_t* src, uint32_t srcPitch, uint8_t* dst, uint32_
     }
 }
 
+__global__
+void uint32_to_nv12(const uint8_t* src, uint32_t srcPitch, uint8_t* dst, uint32_t dstPitch, uint32_t width, uint32_t height)
+{
+    const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
+    const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
 
+    if (x < width && y < height)
+    {
+        const uint32_t i = y * srcPitch + 4 * x;
+        const uint32_t j = y * dstPitch + x;
+
+        // Copy highest byte to left quarter of Y channel,
+        // ...
+        // Copy lowest byte to right quarter of Y channel
+        dst[j] = src[i];
+        dst[j + width] = src[i + 1];
+        dst[j + 2 * width] = src[i + 2];
+        dst[j + 3 * width] = src[i + 3];
+
+        // Blank UV channel
+        if (y < height / 2)
+        {
+            uint8_t* UV = dst + dstPitch * (height + y);
+            UV[4 * x + 0] = 0;
+            UV[4 * x + 1] = 0;
+            UV[4 * x + 2] = 0;
+            UV[4 * x + 3] = 0;
+        }
+    }
+}
+
+__global__
+void nv12_to_uint32(const uint8_t* src, uint32_t srcPitch, uint8_t* dst, uint32_t dstPitch, uint32_t width, uint32_t height)
+{
+    const uint32_t x = blockIdx.x * blockDim.x + threadIdx.x;
+    const uint32_t y = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (x < width && y < height)
+    {
+        const uint32_t i = y * srcPitch + x;
+        const uint32_t j = y * dstPitch + 4 * x;
+
+        // Copy highest byte from left quarter of Y channel
+        // ...
+        // Copy lowest byte from right quarter of Y channel
+        dst[j] = src[i];
+        dst[j + 1] = src[i + width];
+        dst[j + 2] = src[i + 2 * width];
+        dst[j + 3] = src[i + 3 * width];
+
+    }
+}
 
 #ifdef NVPIPE_WITH_OPENGL
 /**
@@ -350,6 +395,8 @@ public:
         // Recreate encoder if size changed
         if (this->format == NVPIPE_UINT16)
             this->recreate(width * 2, height); // split into two adjecent tiles in Y channel
+        else if (this->format == NVPIPE_UINT32)
+            this->recreate(width * 4, height); // split into four adjecent tiles in Y channel
         else
             this->recreate(width, height);
 
@@ -397,6 +444,14 @@ public:
                 dim3 blockSize(16, 2);
 
                 uint16_to_nv12<<<gridSize, blockSize>>>((uint8_t*) (copyToDevice ? this->deviceBuffer : src), width * 2, (uint8_t*) f->inputPtr, f->pitch, width, height);
+            }
+            else if (this->format == NVPIPE_UINT32)
+            {
+                // one thread per pixel (split 32 bit into 4x 8 bit)
+                dim3 gridSize(width / 16 + 1, height / 2 + 1);
+                dim3 blockSize(16, 2);
+
+                uint32_to_nv12<<<gridSize, blockSize>>>((uint8_t*) (copyToDevice ? this->deviceBuffer : src), width * 4, (uint8_t*) f->inputPtr, f->pitch, width, height);
             }
         }
 
@@ -620,6 +675,8 @@ public:
         // Recreate decoder if size changed
         if (this->format == NVPIPE_UINT16)
             this->recreate(width * 2, height); // split into two adjecent tiles in Y channel
+        else if (this->format == NVPIPE_UINT32)
+            this->recreate(width * 4, height); // split into four adjecent tiles in Y channel
         else
             this->recreate(width, height);
 
@@ -663,6 +720,14 @@ public:
                 dim3 blockSize(16, 2);
 
                 nv12_to_uint16<<<gridSize, blockSize>>>(decoded, this->decoder->GetDeviceFramePitch(), dstDevice, width * 2, width, height);
+            }
+            else if (this->format == NVPIPE_UINT32)
+            {
+                // one thread per pixel (merge 4x8 bit into 32 bit pixels)
+                dim3 gridSize(width / 16 + 1, height / 2 + 1);
+                dim3 blockSize(16, 2);
+
+                nv12_to_uint32<<<gridSize, blockSize>>>(decoded, this->decoder->GetDeviceFramePitch(), dstDevice, width * 4, width, height);
             }
 
             // Copy to host if necessary
