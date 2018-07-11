@@ -78,7 +78,7 @@ int main(int argc, char* argv[])
     for (uint32_t i = 0; i < 10; ++i)
     {
         timer.reset();
-        uint64_t size = NvPipe_Encode(encoder, rgba.data(), compressed.data(), compressed.size(), width, height);
+        uint64_t size = NvPipe_Encode(encoder, rgba.data(), width * 4, compressed.data(), compressed.size(), width, height);
         double encodeMs = timer.getElapsedMilliseconds();
 
         if (0 == size)
