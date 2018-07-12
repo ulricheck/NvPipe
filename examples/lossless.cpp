@@ -39,7 +39,7 @@
 void test(const uint8_t* data, NvPipe_Format format, uint32_t width, uint32_t height)
 {
     uint64_t dataSize = width * height;
-    size_t dataPitch = width;
+    uint64_t dataPitch = width;
     if (format == NVPIPE_UINT4)
     {
         dataSize /= 2;

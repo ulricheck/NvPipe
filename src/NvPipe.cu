@@ -390,7 +390,7 @@ public:
             cudaFree(this->deviceBuffer);
     }
 
-    uint64_t encode(const void* src, size_t srcPitch, uint8_t *dst, uint64_t dstSize, uint32_t width, uint32_t height)
+    uint64_t encode(const void* src, uint64_t srcPitch, uint8_t *dst, uint64_t dstSize, uint32_t width, uint32_t height)
     {
         // Recreate encoder if size changed
         if (this->format == NVPIPE_UINT16)
@@ -936,7 +936,7 @@ NVPIPE_EXPORT NvPipe* NvPipe_CreateEncoder(NvPipe_Format format, NvPipe_Codec co
     return instance;
 }
 
-NVPIPE_EXPORT uint64_t NvPipe_Encode(NvPipe* nvp, const void* src, size_t srcPitch, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height)
+NVPIPE_EXPORT uint64_t NvPipe_Encode(NvPipe* nvp, const void* src, uint64_t srcPitch, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height)
 {
     Instance* instance = static_cast<Instance*>(nvp);
     if (!instance->encoder)
