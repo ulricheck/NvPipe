@@ -95,13 +95,14 @@ NVPIPE_EXPORT NvPipe* NvPipe_CreateEncoder(NvPipe_Format format, NvPipe_Codec co
  * @brief Encodes a single frame from device or host memory.
  * @param nvp Encoder instance.
  * @param src Device or host memory pointer.
+ * @param srcPitch Pitch of source memory.
  * @param dst Host memory pointer for compressed output.
  * @param dstSize Available space for compressed output.
  * @param width Width of input frame in pixels.
  * @param height Height of input frame in pixels.
  * @return Size of encoded data in bytes or 0 on error.
  */
-NVPIPE_EXPORT uint64_t NvPipe_Encode(NvPipe* nvp, const void* src, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height);
+NVPIPE_EXPORT uint64_t NvPipe_Encode(NvPipe* nvp, const void* src, size_t srcPitch, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height);
 
 
 #ifdef NVPIPE_WITH_OPENGL

@@ -390,7 +390,7 @@ public:
             cudaFree(this->deviceBuffer);
     }
 
-    uint64_t encode(const void* src, uint8_t *dst, uint64_t dstSize, uint32_t width, uint32_t height)
+    uint64_t encode(const void* src, size_t srcPitch, uint8_t *dst, uint64_t dstSize, uint32_t width, uint32_t height)
     {
         // Recreate encoder if size changed
         if (this->format == NVPIPE_UINT16)
@@ -403,7 +403,7 @@ public:
         // RGBA can be directly copied from host or device
         if (this->format == NVPIPE_RGBA32)
         {
-            CUDA_THROW(cudaMemcpy(this->encoder->GetNextInputFrame()->inputPtr, src, width * height * 4, isDevicePointer(src) ? cudaMemcpyDeviceToDevice : cudaMemcpyHostToDevice),
+            CUDA_THROW(cudaMemcpy2D(this->encoder->GetNextInputFrame()->inputPtr, width * 4, src, srcPitch, width * 4, height, isDevicePointer(src) ? cudaMemcpyDeviceToDevice : cudaMemcpyHostToDevice),
                        "Failed to copy input frame");
         }
         // Other formats need to be copied to the device and converted
@@ -427,7 +427,7 @@ public:
                 dim3 gridSize(width / 16 + 1, height / 2 + 1);
                 dim3 blockSize(16, 2);
 
-                uint4_to_nv12<<<gridSize, blockSize>>>((uint8_t*) (copyToDevice ? this->deviceBuffer : src), width / 2, (uint8_t*) f->inputPtr, f->pitch, width, height);
+                uint4_to_nv12<<<gridSize, blockSize>>>((uint8_t*) (copyToDevice ? this->deviceBuffer : src), srcPitch, (uint8_t*) f->inputPtr, f->pitch, width, height);
             }
             else if (this->format == NVPIPE_UINT8)
             {
@@ -435,7 +435,7 @@ public:
                 dim3 gridSize(width / 16 + 1, height / 2 + 1);
                 dim3 blockSize(16, 2);
 
-                uint8_to_nv12<<<gridSize, blockSize>>>((uint8_t*) (copyToDevice ? this->deviceBuffer : src), width, (uint8_t*) f->inputPtr, f->pitch, width, height);
+                uint8_to_nv12<<<gridSize, blockSize>>>((uint8_t*) (copyToDevice ? this->deviceBuffer : src), srcPitch, (uint8_t*) f->inputPtr, f->pitch, width, height);
             }
             else if (this->format == NVPIPE_UINT16)
             {
@@ -443,7 +443,7 @@ public:
                 dim3 gridSize(width / 16 + 1, height / 2 + 1);
                 dim3 blockSize(16, 2);
 
-                uint16_to_nv12<<<gridSize, blockSize>>>((uint8_t*) (copyToDevice ? this->deviceBuffer : src), width * 2, (uint8_t*) f->inputPtr, f->pitch, width, height);
+                uint16_to_nv12<<<gridSize, blockSize>>>((uint8_t*) (copyToDevice ? this->deviceBuffer : src), srcPitch, (uint8_t*) f->inputPtr, f->pitch, width, height);
             }
             else if (this->format == NVPIPE_UINT32)
             {
@@ -451,7 +451,7 @@ public:
                 dim3 gridSize(width / 16 + 1, height / 2 + 1);
                 dim3 blockSize(16, 2);
 
-                uint32_to_nv12<<<gridSize, blockSize>>>((uint8_t*) (copyToDevice ? this->deviceBuffer : src), width * 4, (uint8_t*) f->inputPtr, f->pitch, width, height);
+                uint32_to_nv12<<<gridSize, blockSize>>>((uint8_t*) (copyToDevice ? this->deviceBuffer : src), srcPitch, (uint8_t*) f->inputPtr, f->pitch, width, height);
             }
         }
 
@@ -504,7 +504,7 @@ public:
                    "Failed to get mapped PBO pointer");
 
         // Encode
-        uint64_t size = this->encode(pboPointer, dst, dstSize, width, height);
+        uint64_t size = this->encode(pboPointer, width * 4, dst, dstSize, width, height);
 
         // Unmap PBO
         CUDA_THROW(cudaGraphicsUnmapResources(1, &resource),
@@ -936,7 +936,7 @@ NVPIPE_EXPORT NvPipe* NvPipe_CreateEncoder(NvPipe_Format format, NvPipe_Codec co
     return instance;
 }
 
-NVPIPE_EXPORT uint64_t NvPipe_Encode(NvPipe* nvp, const void* src, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height)
+NVPIPE_EXPORT uint64_t NvPipe_Encode(NvPipe* nvp, const void* src, size_t srcPitch, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height)
 {
     Instance* instance = static_cast<Instance*>(nvp);
     if (!instance->encoder)
@@ -947,7 +947,7 @@ NVPIPE_EXPORT uint64_t NvPipe_Encode(NvPipe* nvp, const void* src, uint8_t* dst,
 
     try
     {
-        return instance->encoder->encode(src, dst, dstSize, width, height);
+        return instance->encoder->encode(src, srcPitch, dst, dstSize, width, height);
     }
     catch (Exception& e)
     {
