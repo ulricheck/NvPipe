@@ -136,6 +136,8 @@ int main(int argc, char* argv[])
     }
 
     in.close();
+
+    NvPipe_Destroy(decoder);
 #endif
 
     return 0;
