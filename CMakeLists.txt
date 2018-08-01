@@ -51,7 +51,7 @@ option(NVPIPE_BUILD_EXAMPLES "Builds the NvPipe example applications (requires b
 
 # Header
 configure_file(src/NvPipe.h.in include/NvPipe.h @ONLY)
-include_directories(${CMAKE_BINARY_DIR}/include)
+include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
 
 # NvPipe shared library
 list(APPEND NVPIPE_SOURCES
@@ -83,9 +83,12 @@ endif()
 include(GNUInstallDirs)
 
 cuda_add_library(${PROJECT_NAME} SHARED ${NVPIPE_SOURCES})
-target_include_directories(${PROJECT_NAME} PUBLIC  
+target_include_directories(${PROJECT_NAME} PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+    $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>
+    )
+target_include_directories(${PROJECT_NAME} PRIVATE
     $<BUILD_INTERFACE:src/NvCodec ${CUDA_INCLUDE_DIRS}>
-    $<INSTALL_INTERFACE:include>
     )
 target_link_libraries(${PROJECT_NAME} ${NVPIPE_LIBRARIES})
 
