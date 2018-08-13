@@ -39,7 +39,7 @@ NvPipe* encoder = NvPipe_CreateEncoder(NVPIPE_RGBA32, NVPIPE_H264, NVPIPE_LOSSY,
 while (frameAvailable) 
 {
     // Encode next frame
-    uint64_t compressedSize = NvPipe_Encode(encoder, rgba, width * 4, buffer, bufferSize, width, height);
+    uint64_t compressedSize = NvPipe_Encode(encoder, rgba, width * 4, buffer, bufferSize, width, height, false);
     
     // Send the frame size and compressed stream to the consuming side
     send(socket, &compressedSize, sizeof(uint64_t), ...);
