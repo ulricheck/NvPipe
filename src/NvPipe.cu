@@ -390,7 +390,7 @@ public:
             cudaFree(this->deviceBuffer);
     }
 
-    uint64_t encode(const void* src, uint64_t srcPitch, uint8_t *dst, uint64_t dstSize, uint32_t width, uint32_t height)
+    uint64_t encode(const void* src, uint64_t srcPitch, uint8_t *dst, uint64_t dstSize, uint32_t width, uint32_t height, bool forceIFrame)
     {
         // Recreate encoder if size changed
         if (this->format == NVPIPE_UINT16)
@@ -456,12 +456,12 @@ public:
         }
 
         // Encode
-        return this->encode(dst, dstSize);
+        return this->encode(dst, dstSize, forceIFrame);
     }
 
 #ifdef NVPIPE_WITH_OPENGL
 
-    uint64_t encodeTexture(uint32_t texture, uint32_t target, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height)
+    uint64_t encodeTexture(uint32_t texture, uint32_t target, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height, bool forceIFrame)
     {
         if (this->format != NVPIPE_RGBA32)
             throw Exception("The OpenGL interface only supports the RGBA32 format");
@@ -480,7 +480,7 @@ public:
                    "Failed to copy from texture array");
 
         // Encode
-        uint64_t size = this->encode(dst, dstSize);
+        uint64_t size = this->encode(dst, dstSize, forceIFrame);
 
         // Unmap texture
         CUDA_THROW(cudaGraphicsUnmapResources(1, &resource),
@@ -489,7 +489,7 @@ public:
         return size;
     }
 
-    uint64_t encodePBO(uint32_t pbo, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height)
+    uint64_t encodePBO(uint32_t pbo, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height, bool forceIFrame)
     {
         if (this->format != NVPIPE_RGBA32)
             throw Exception("The OpenGL interface only supports the RGBA32 format");
@@ -504,7 +504,7 @@ public:
                    "Failed to get mapped PBO pointer");
 
         // Encode
-        uint64_t size = this->encode(pboPointer, width * 4, dst, dstSize, width, height);
+        uint64_t size = this->encode(pboPointer, width * 4, dst, dstSize, width, height, forceIFrame);
 
         // Unmap PBO
         CUDA_THROW(cudaGraphicsUnmapResources(1, &resource),
@@ -580,13 +580,23 @@ private:
         }
     }
 
-    uint64_t encode(uint8_t* dst, uint64_t dstSize)
+    uint64_t encode(uint8_t* dst, uint64_t dstSize, bool forceIFrame)
     {
         std::vector<std::vector<uint8_t>> packets;
 
         try
         {
-            this->encoder->EncodeFrame(packets);
+            if (forceIFrame)
+            {
+                NV_ENC_PIC_PARAMS params = {};
+                params.encodePicFlags = NV_ENC_PIC_FLAG_FORCEIDR | NV_ENC_PIC_FLAG_OUTPUT_SPSPPS;
+
+                this->encoder->EncodeFrame(packets, &params);
+            }
+            else
+            {
+                this->encoder->EncodeFrame(packets);
+            }
         }
         catch (NVENCException& e)
         {
@@ -936,7 +946,7 @@ NVPIPE_EXPORT NvPipe* NvPipe_CreateEncoder(NvPipe_Format format, NvPipe_Codec co
     return instance;
 }
 
-NVPIPE_EXPORT uint64_t NvPipe_Encode(NvPipe* nvp, const void* src, uint64_t srcPitch, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height)
+NVPIPE_EXPORT uint64_t NvPipe_Encode(NvPipe* nvp, const void* src, uint64_t srcPitch, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height, bool forceIFrame)
 {
     Instance* instance = static_cast<Instance*>(nvp);
     if (!instance->encoder)
@@ -947,7 +957,7 @@ NVPIPE_EXPORT uint64_t NvPipe_Encode(NvPipe* nvp, const void* src, uint64_t srcP
 
     try
     {
-        return instance->encoder->encode(src, srcPitch, dst, dstSize, width, height);
+        return instance->encoder->encode(src, srcPitch, dst, dstSize, width, height, forceIFrame);
     }
     catch (Exception& e)
     {
@@ -958,7 +968,7 @@ NVPIPE_EXPORT uint64_t NvPipe_Encode(NvPipe* nvp, const void* src, uint64_t srcP
 
 #ifdef NVPIPE_WITH_OPENGL
 
-NVPIPE_EXPORT uint64_t NvPipe_EncodeTexture(NvPipe* nvp, uint32_t texture, uint32_t target, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height)
+NVPIPE_EXPORT uint64_t NvPipe_EncodeTexture(NvPipe* nvp, uint32_t texture, uint32_t target, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height, bool forceIFrame)
 {
     Instance* instance = static_cast<Instance*>(nvp);
     if (!instance->encoder)
@@ -969,7 +979,7 @@ NVPIPE_EXPORT uint64_t NvPipe_EncodeTexture(NvPipe* nvp, uint32_t texture, uint3
 
     try
     {
-        return instance->encoder->encodeTexture(texture, target, dst, dstSize, width, height);
+        return instance->encoder->encodeTexture(texture, target, dst, dstSize, width, height, forceIFrame);
     }
     catch (Exception& e)
     {
@@ -978,7 +988,7 @@ NVPIPE_EXPORT uint64_t NvPipe_EncodeTexture(NvPipe* nvp, uint32_t texture, uint3
     }
 }
 
-NVPIPE_EXPORT uint64_t NvPipe_EncodePBO(NvPipe* nvp, uint32_t pbo, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height)
+NVPIPE_EXPORT uint64_t NvPipe_EncodePBO(NvPipe* nvp, uint32_t pbo, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height, bool forceIFrame)
 {
     Instance* instance = static_cast<Instance*>(nvp);
     if (!instance->encoder)
@@ -989,7 +999,7 @@ NVPIPE_EXPORT uint64_t NvPipe_EncodePBO(NvPipe* nvp, uint32_t pbo, uint8_t* dst,
 
     try
     {
-        return instance->encoder->encodePBO(pbo, dst, dstSize, width, height);
+        return instance->encoder->encodePBO(pbo, dst, dstSize, width, height, forceIFrame);
     }
     catch (Exception& e)
     {

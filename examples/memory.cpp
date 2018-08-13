@@ -91,7 +91,7 @@ int main(int argc, char* argv[])
         {
             // Encode
             timer.reset();
-            uint64_t size = NvPipe_Encode(encoder, rgba.data(), width * 4, compressed.data(), compressed.size(), width, height);
+            uint64_t size = NvPipe_Encode(encoder, rgba.data(), width * 4, compressed.data(), compressed.size(), width, height, false);
             double encodeMs = timer.getElapsedMilliseconds();
 
             if (0 == size)
@@ -144,7 +144,7 @@ int main(int argc, char* argv[])
         {
             // Encode
             timer.reset();
-            uint64_t size = NvPipe_Encode(encoder, rgbaDevice, width * 4, compressed.data(), compressed.size(), width, height);
+            uint64_t size = NvPipe_Encode(encoder, rgbaDevice, width * 4, compressed.data(), compressed.size(), width, height, false);
             double encodeMs = timer.getElapsedMilliseconds();
 
             if (0 == size)

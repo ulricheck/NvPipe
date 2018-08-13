@@ -69,7 +69,7 @@ void test(const uint8_t* data, NvPipe_Format format, uint32_t width, uint32_t he
 
     std::vector<uint8_t> buffer(dataSize * 2);
     timer.reset();
-    uint64_t size = NvPipe_Encode(encoder, data, dataPitch, buffer.data(), buffer.size(), width, height);
+    uint64_t size = NvPipe_Encode(encoder, data, dataPitch, buffer.data(), buffer.size(), width, height, false);
     double encodeMs = timer.getElapsedMilliseconds();
     if (0 == size)
     {

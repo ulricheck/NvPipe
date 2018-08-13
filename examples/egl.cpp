@@ -231,7 +231,7 @@ int main(int argc, char* argv[])
         std::vector<uint8_t> compressed(width * height * 4);
 
         timer.reset();
-        uint64_t size = NvPipe_EncodeTexture(encoder, serverColorTex, GL_TEXTURE_2D, compressed.data(), compressed.size(), width, height);
+        uint64_t size = NvPipe_EncodeTexture(encoder, serverColorTex, GL_TEXTURE_2D, compressed.data(), compressed.size(), width, height, false);
         double encodeMs = timer.getElapsedMilliseconds();
 
         if (0 == size)
