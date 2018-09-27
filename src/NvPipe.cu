@@ -72,7 +72,7 @@ inline bool isDevicePointer(const void* ptr)
 {
     struct cudaPointerAttributes attr;
     const cudaError_t perr = cudaPointerGetAttributes(&attr, ptr);
-    return (perr == cudaSuccess) && (attr.memoryType == cudaMemoryTypeDevice);
+    return (perr == cudaSuccess) && (attr.type == cudaMemoryTypeDevice);
 }
 
 inline uint64_t getFrameSize(NvPipe_Format format, uint32_t width, uint32_t height)
@@ -388,6 +388,30 @@ public:
         // Free temporary device memory
         if (this->deviceBuffer)
             cudaFree(this->deviceBuffer);
+    }
+
+    void setBitrate(uint64_t bitrate, uint32_t targetFrameRate)
+    {
+        NV_ENC_CONFIG config;
+        memset(&config, 0, sizeof(config));
+        config.version = NV_ENC_CONFIG_VER;
+        config.rcParams.averageBitRate = bitrate;
+
+        NV_ENC_RECONFIGURE_PARAMS reconfigureParams;
+        memset(&reconfigureParams, 0, sizeof(reconfigureParams));
+        reconfigureParams.version = NV_ENC_RECONFIGURE_PARAMS_VER;
+        reconfigureParams.resetEncoder = 1;
+        reconfigureParams.forceIDR = 1;
+        reconfigureParams.reInitEncodeParams.encodeConfig = &config;
+
+        encoder->GetInitializeParams(&reconfigureParams.reInitEncodeParams);
+        reconfigureParams.reInitEncodeParams.frameRateNum = targetFrameRate;
+        reconfigureParams.reInitEncodeParams.frameRateDen = 1;
+
+        encoder->Reconfigure(&reconfigureParams);
+
+        this->bitrate = bitrate;
+        this->targetFrameRate = targetFrameRate;
     }
 
     uint64_t encode(const void* src, uint64_t srcPitch, uint8_t *dst, uint64_t dstSize, uint32_t width, uint32_t height, bool forceIFrame)
@@ -944,6 +968,25 @@ NVPIPE_EXPORT NvPipe* NvPipe_CreateEncoder(NvPipe_Format format, NvPipe_Codec co
     }
 
     return instance;
+}
+
+NVPIPE_EXPORT void NvPipe_SetBitrate(NvPipe* nvp, uint64_t bitrate, uint32_t targetFrameRate)
+{
+    Instance* instance = static_cast<Instance*>(nvp);
+    if (!instance->encoder)
+    {
+        instance->error = "Invalid NvPipe encoder.";
+        return;
+    }
+
+    try
+    {
+        return instance->encoder->setBitrate(bitrate, targetFrameRate);
+    }
+    catch (Exception& e)
+    {
+        instance->error = e.getErrorString();
+    }
 }
 
 NVPIPE_EXPORT uint64_t NvPipe_Encode(NvPipe* nvp, const void* src, uint64_t srcPitch, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height, bool forceIFrame)
