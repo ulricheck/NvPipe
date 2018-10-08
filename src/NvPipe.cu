@@ -72,7 +72,12 @@ inline bool isDevicePointer(const void* ptr)
 {
     struct cudaPointerAttributes attr;
     const cudaError_t perr = cudaPointerGetAttributes(&attr, ptr);
+
+#if (CUDA_VERSION >= 10000)
     return (perr == cudaSuccess) && (attr.type == cudaMemoryTypeDevice);
+#else
+    return (perr == cudaSuccess) && (attr.memoryType == cudaMemoryTypeDevice);
+#endif
 }
 
 inline uint64_t getFrameSize(NvPipe_Format format, uint32_t width, uint32_t height)
