@@ -432,7 +432,8 @@ public:
         // RGBA can be directly copied from host or device
         if (this->format == NVPIPE_RGBA32)
         {
-            CUDA_THROW(cudaMemcpy2D(this->encoder->GetNextInputFrame()->inputPtr, width * 4, src, srcPitch, width * 4, height, isDevicePointer(src) ? cudaMemcpyDeviceToDevice : cudaMemcpyHostToDevice),
+            const NvEncInputFrame* f = this->encoder->GetNextInputFrame();
+            CUDA_THROW(cudaMemcpy2D(f->inputPtr, f->pitch, src, srcPitch, width * 4, height, isDevicePointer(src) ? cudaMemcpyDeviceToDevice : cudaMemcpyHostToDevice),
                        "Failed to copy input frame");
         }
         // Other formats need to be copied to the device and converted
@@ -505,7 +506,9 @@ public:
         cudaArray_t array;
         CUDA_THROW(cudaGraphicsSubResourceGetMappedArray(&array, resource, 0, 0),
                    "Failed get texture graphics resource array");
-        CUDA_THROW(cudaMemcpy2DFromArray(this->encoder->GetNextInputFrame()->inputPtr, width * 4, array, 0, 0, width * 4, height, cudaMemcpyDeviceToDevice),
+
+        const NvEncInputFrame* f = this->encoder->GetNextInputFrame();
+        CUDA_THROW(cudaMemcpy2DFromArray(f->inputPtr, f->pitch, array, 0, 0, width * 4, height, cudaMemcpyDeviceToDevice),
                    "Failed to copy from texture array");
 
         // Encode
