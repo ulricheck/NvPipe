@@ -82,7 +82,7 @@ inline bool isDevicePointer(const void* ptr)
 
 inline uint64_t getFrameSize(NvPipe_Format format, uint32_t width, uint32_t height)
 {
-    if (format == NVPIPE_RGBA32)
+    if (format == NVPIPE_BGRA32)
         return width * height * 4;
     else if (format == NVPIPE_UINT4)
         return width * height / 2;
@@ -430,7 +430,7 @@ public:
             this->recreate(width, height);
 
         // RGBA can be directly copied from host or device
-        if (this->format == NVPIPE_RGBA32)
+        if (this->format == NVPIPE_BGRA32)
         {
             const NvEncInputFrame* f = this->encoder->GetNextInputFrame();
             CUDA_THROW(cudaMemcpy2D(f->inputPtr, f->pitch, src, srcPitch, width * 4, height, isDevicePointer(src) ? cudaMemcpyDeviceToDevice : cudaMemcpyHostToDevice),
@@ -493,8 +493,8 @@ public:
 
     uint64_t encodeTexture(uint32_t texture, uint32_t target, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height, bool forceIFrame)
     {
-        if (this->format != NVPIPE_RGBA32)
-            throw Exception("The OpenGL interface only supports the RGBA32 format");
+        if (this->format != NVPIPE_BGRA32)
+            throw Exception("The OpenGL interface only supports the BGRA32 format");
 
         // Recreate encoder if size changed
         this->recreate(width, height);
@@ -523,8 +523,8 @@ public:
 
     uint64_t encodePBO(uint32_t pbo, uint8_t* dst, uint64_t dstSize, uint32_t width, uint32_t height, bool forceIFrame)
     {
-        if (this->format != NVPIPE_RGBA32)
-            throw Exception("The OpenGL interface only supports the RGBA32 format");
+        if (this->format != NVPIPE_BGRA32)
+            throw Exception("The OpenGL interface only supports the BGRA32 format");
 
         // Map PBO and copy input to encoder
         cudaGraphicsResource_t resource = this->registry.getPBOGraphicsResource(pbo, width, height, cudaGraphicsRegisterFlagsReadOnly);
@@ -566,7 +566,7 @@ private:
         // Create encoder
         try
         {
-            NV_ENC_BUFFER_FORMAT bufferFormat = (this->format == NVPIPE_RGBA32) ? NV_ENC_BUFFER_FORMAT_ARGB : NV_ENC_BUFFER_FORMAT_NV12;
+            NV_ENC_BUFFER_FORMAT bufferFormat = (this->format == NVPIPE_BGRA32) ? NV_ENC_BUFFER_FORMAT_ARGB : NV_ENC_BUFFER_FORMAT_NV12;
             this->encoder = std::unique_ptr<NvEncoderCuda>(new NvEncoderCuda(cudaContext, width, height, bufferFormat, 0));
 
             NV_ENC_INITIALIZE_PARAMS initializeParams = { NV_ENC_INITIALIZE_PARAMS_VER };
@@ -735,7 +735,7 @@ public:
             // Convert to output format
             uint8_t* dstDevice = (uint8_t*) (copyToHost ? this->deviceBuffer : dst);
 
-            if (this->format == NVPIPE_RGBA32)
+            if (this->format == NVPIPE_BGRA32)
             {
                 Nv12ToBgra32(decoded, width, dstDevice, width * 4, width, height);
             }
@@ -787,8 +787,8 @@ public:
 
     uint64_t decodeTexture(const uint8_t* src, uint64_t srcSize, uint32_t texture, uint32_t target, uint32_t width, uint32_t height)
     {
-        if (this->format != NVPIPE_RGBA32)
-            throw Exception("The OpenGL interface only supports the RGBA32 format");
+        if (this->format != NVPIPE_BGRA32)
+            throw Exception("The OpenGL interface only supports the BGRA32 format");
 
         // Recreate decoder if size changed
         this->recreate(width, height);
@@ -822,8 +822,8 @@ public:
 
     uint64_t decodePBO(const uint8_t* src, uint64_t srcSize, uint32_t pbo, uint32_t width, uint32_t height)
     {
-        if (this->format != NVPIPE_RGBA32)
-            throw Exception("The OpenGL interface only supports the RGBA32 format");
+        if (this->format != NVPIPE_BGRA32)
+            throw Exception("The OpenGL interface only supports the BGRA32 format");
 
         // Map PBO for output
         cudaGraphicsResource_t resource = this->registry.getPBOGraphicsResource(pbo, width, height, cudaGraphicsRegisterFlagsWriteDiscard);
