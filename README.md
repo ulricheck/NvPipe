@@ -177,7 +177,7 @@ Frame | Encode (ms) | Decode (ms) | Size (KB)
 Note that the overall compressed sizes differ in the two examples as they use different images for input. 
 
 The `lossless` example demonstrates the usage of NvPipe for lossless integer data compression. An 8 bit unsigned integer frame is created, compressed, and the result verified for bitwise correctness after decompression.
-The following example output shows that while correctness is always guarenteed due to lossless compression, the chosen pixel format has crucial impact on the compressed output size.
+The following example output shows that while correctness is always guaranteed due to lossless compression, the chosen pixel format has crucial impact on the compressed output size.
 ```bash
 $ ./nvpExampleLossless 
 NvPipe example application: Tests lossless compression of a grayscale integer frame.
