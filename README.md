@@ -215,7 +215,7 @@ NvPipe has been successfully tested on:
 Publication
 ===================
 
-NvPipe was successfully used in the EGPGV 2018 best paper *Hardware-Accelerated Multi-Tile Streaming for Realtime Remote Visualization*, which is available [here](http://biedert.de/publications/Streaming-EGPGV2018.pdf).
+NvPipe was successfully used in the EGPGV 2018 best paper *Hardware-Accelerated Multi-Tile Streaming for Realtime Remote Visualization*, which is available [here](https://hpcvis.org/publications/Streaming-EGPGV2018.pdf).
 
 
 
