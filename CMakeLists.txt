@@ -40,7 +40,12 @@ endif()
 
 find_package(CUDA REQUIRED)
 
-set (CMAKE_CXX_STANDARD 11)
+# Construct path to CUDA driver API lib (not provided by FindCUDA)
+get_filename_component(CUDA_LIB_DIR ${CUDA_cudart_static_LIBRARY} DIRECTORY)
+find_library(CUDA_LIB NAMES cuda HINTS ${CUDA_LIB_DIR})
+
+# Set C++ standard
+set(CMAKE_CXX_STANDARD 11)
 list(APPEND CUDA_NVCC_FLAGS "-std=c++11")
 
 # Options
@@ -61,7 +66,7 @@ list(APPEND NVPIPE_SOURCES
 list(APPEND NVPIPE_LIBRARIES
     ${CMAKE_DL_LIBS}
     ${CUDA_LIBRARIES}
-    cuda
+    ${CUDA_LIB}
     )
 
 if (NVPIPE_WITH_ENCODER)
@@ -71,13 +76,21 @@ if (NVPIPE_WITH_ENCODER)
         )
 endif()
 
-if (NVPIPE_WITH_DECODER)
+if (NVPIPE_WITH_DECODER)    
     list(APPEND NVPIPE_SOURCES
         src/NvCodec/NvDecoder/NvDecoder.cpp
         )
     list(APPEND NVPIPE_LIBRARIES
         nvcuvid
         )
+
+    if (WIN32)
+        if (CMAKE_SIZEOF_VOID_P EQUAL 8)
+            link_directories(src/NvCodec/Lib/x64)
+        elseif (CMAKE_SIZEOF_VOID_P EQUAL 4)
+            link_directories(src/NvCodec/Lib/Win32)
+        endif()    
+    endif()
 endif()
 
 include(GNUInstallDirs)
