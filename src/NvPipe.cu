@@ -74,9 +74,9 @@ inline bool isDevicePointer(const void* ptr)
     const cudaError_t perr = cudaPointerGetAttributes(&attr, ptr);
 
 #if (CUDA_VERSION >= 10000)
-    return (perr == cudaSuccess) && (attr.type == cudaMemoryTypeDevice);
+    return (perr == cudaSuccess) && (attr.type != cudaMemoryTypeHost);
 #else
-    return (perr == cudaSuccess) && (attr.memoryType == cudaMemoryTypeDevice);
+    return (perr == cudaSuccess) && (attr.memoryType != cudaMemoryTypeHost);
 #endif
 }
 
