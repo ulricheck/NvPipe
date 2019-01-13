@@ -204,6 +204,8 @@ NvPipe has been successfully tested on:
 
 | Device            | Driver | CUDA | OS                     | Architecture |
 |-------------------|--------|------|------------------------|--------------|
+| NVIDIA Quadro RTX 6000    | 416.99 | 10.0 | Windows 10           | x86_64       |
+| NVIDIA Quadro RTX 6000    | 410.73 | 10.0 | Ubuntu 18.04           | x86_64       |
 | NVIDIA Titan V    | 396.26 | 9.2  | Ubuntu 18.04           | x86_64       |
 | NVIDIA Quadro M1200 | 390.48 | 9.1  | Ubuntu 18.04 | x86_64       |
 | NVIDIA Tesla P100 | 375.74 | 8.0  | Cray (SLES 12.2) | x86_64       |
