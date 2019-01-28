@@ -197,20 +197,8 @@ Supported Platforms
 
 NvPipe is supported on both Linux and Windows. OS X support is not plausible in the short term.  
 
-Please refer to the hardware capability matrices of the [NVIDIA Video Codec SDK](https://developer.nvidia.com/nvidia-video-codec-sdk) for more details on feature availability.
+Please refer to the hardware capability matrices of the [NVIDIA Video Codec SDK](https://developer.nvidia.com/nvidia-video-codec-sdk) for more details on feature availability and driver requirements.
 Note that NvPipe does not support the Jetson platform, on which the video hardware should be accessed through the [NvMedia API](https://docs.nvidia.com/drive/nvvib_docs/NVIDIA%20DRIVE%20Linux%20SDK%20Development%20Guide/baggage/group__nvmedia__top.html).
-
-NvPipe has been successfully tested on:
-
-| Device            | Driver | CUDA | OS                     | Architecture |
-|-------------------|--------|------|------------------------|--------------|
-| NVIDIA Quadro RTX 6000    | 416.99 | 10.0 | Windows 10           | x86_64       |
-| NVIDIA Quadro RTX 6000    | 410.73 | 10.0 | Ubuntu 18.04           | x86_64       |
-| NVIDIA Titan V    | 396.26 | 9.2  | Ubuntu 18.04           | x86_64       |
-| NVIDIA Quadro M1200 | 390.48 | 9.1  | Ubuntu 18.04 | x86_64       |
-| NVIDIA Tesla P100 | 375.74 | 8.0  | Cray (SLES 12.2) | x86_64       |
-| NVIDIA GeForce GTX 1080 | 382.53 | 8.0  | Windows 7 | x86_64       |
-
 
 
 
