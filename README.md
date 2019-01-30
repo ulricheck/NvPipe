@@ -212,8 +212,8 @@ NvPipe was successfully used in the EGPGV 2018 best paper *Hardware-Accelerated 
 Feedback
 ===================
 
-Feedback welcome! We would love to hear more about your use cases of NvPipe!
+Feedback and pull requests welcome! 
 
+We would love to hear more about your use cases of NvPipe!
 If you have any questions, feature requests, issues, or ideas for improvement, please feel free to reach out at [tbiedert@nvidia.com](mailto:tbiedert@nvidia.com).
-
 
