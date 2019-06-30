@@ -9,14 +9,7 @@
 *
 */
 
-#include <stdint.h>
-#include <cuda_runtime.h>
-
-typedef enum ColorSpaceStandard {
-    ColorSpaceStandard_BT709 = 0, 
-    ColorSpaceStandard_BT601 = 2, 
-    ColorSpaceStandard_BT2020 = 4
-} ColorSpaceStandard;
+#include "ColorSpace.h"
 
 __constant__ float matYuv2Rgb[3][3];
 __constant__ float matRgb2Yuv[3][3];
@@ -117,12 +110,33 @@ __global__ static void YuvToRgbKernel(uint8_t *pYuv, int nYuvPitch, uint8_t *pRg
     YuvUnitx2 ch = *(YuvUnitx2 *)(pSrc + (nHeight - y / 2) * nYuvPitch);
 
     *(RgbIntx2 *)pDst = RgbIntx2 {
-        YuvToRgbForPixel<Rgb>(l0.x, ch.x, ch.y).d, 
+        YuvToRgbForPixel<Rgb>(l0.x, ch.x, ch.y).d,
         YuvToRgbForPixel<Rgb>(l0.y, ch.x, ch.y).d,
     };
     *(RgbIntx2 *)(pDst + nRgbPitch) = RgbIntx2 {
         YuvToRgbForPixel<Rgb>(l1.x, ch.x, ch.y).d, 
         YuvToRgbForPixel<Rgb>(l1.y, ch.x, ch.y).d,
+    };
+}
+
+template<class YuvUnitx2, class Rgb, class RgbIntx2>
+__global__ static void Yuv444ToRgbKernel(uint8_t *pYuv, int nYuvPitch, uint8_t *pRgb, int nRgbPitch, int nWidth, int nHeight) {
+    int x = (threadIdx.x + blockIdx.x * blockDim.x) * 2;
+    int y = (threadIdx.y + blockIdx.y * blockDim.y);
+    if (x + 1 >= nWidth || y  >= nHeight) {
+        return;
+    }
+
+    uint8_t *pSrc = pYuv + x * sizeof(YuvUnitx2) / 2 + y * nYuvPitch;
+    uint8_t *pDst = pRgb + x * sizeof(Rgb) + y * nRgbPitch;
+
+    YuvUnitx2 l0 = *(YuvUnitx2 *)pSrc;
+    YuvUnitx2 ch1 = *(YuvUnitx2 *)(pSrc + (nHeight * nYuvPitch));
+    YuvUnitx2 ch2 = *(YuvUnitx2 *)(pSrc + (2 * nHeight * nYuvPitch));
+
+    *(RgbIntx2 *)pDst = RgbIntx2{
+        YuvToRgbForPixel<Rgb>(l0.x, ch1.x, ch2.x).d,
+        YuvToRgbForPixel<Rgb>(l0.y, ch1.y, ch2.y).d,
     };
 }
 
@@ -156,63 +170,155 @@ __global__ static void YuvToRgbPlanarKernel(uint8_t *pYuv, int nYuvPitch, uint8_
     *(RgbUnitx2 *)(pDst + nRgbpPitch) = RgbUnitx2 {rgb2.v.z, rgb3.v.z};
 }
 
-union BGRA32 {
-    uint32_t d;
-    uchar4 v;
-    struct {
-        uint8_t b, g, r, a;
-    } c;
-};
+template<class YuvUnitx2, class Rgb, class RgbUnitx2>
+__global__ static void Yuv444ToRgbPlanarKernel(uint8_t *pYuv, int nYuvPitch, uint8_t *pRgbp, int nRgbpPitch, int nWidth, int nHeight) {
+    int x = (threadIdx.x + blockIdx.x * blockDim.x) * 2;
+    int y = (threadIdx.y + blockIdx.y * blockDim.y);
+    if (x + 1 >= nWidth || y >= nHeight) {
+        return;
+    }
 
-union BGRA64 {
-    uint64_t d;
-    ushort4 v;
-    struct {
-        uint16_t b, g, r, a;
-    } c;
-};
+    uint8_t *pSrc = pYuv + x * sizeof(YuvUnitx2) / 2 + y * nYuvPitch;
 
-void Nv12ToBgra32(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix) {
+    YuvUnitx2 l0 = *(YuvUnitx2 *)pSrc;
+    YuvUnitx2 ch1 = *(YuvUnitx2 *)(pSrc + (nHeight * nYuvPitch));
+    YuvUnitx2 ch2 = *(YuvUnitx2 *)(pSrc + (2 * nHeight * nYuvPitch));
+
+    Rgb rgb0 = YuvToRgbForPixel<Rgb>(l0.x, ch1.x, ch2.x),
+        rgb1 = YuvToRgbForPixel<Rgb>(l0.y, ch1.y, ch2.y);
+
+
+    uint8_t *pDst = pRgbp + x * sizeof(RgbUnitx2) / 2 + y * nRgbpPitch;
+    *(RgbUnitx2 *)pDst = RgbUnitx2{ rgb0.v.x, rgb1.v.x };
+
+    pDst += nRgbpPitch * nHeight;
+    *(RgbUnitx2 *)pDst = RgbUnitx2{ rgb0.v.y, rgb1.v.y };
+
+    pDst += nRgbpPitch * nHeight;
+    *(RgbUnitx2 *)pDst = RgbUnitx2{ rgb0.v.z, rgb1.v.z };
+}
+
+template <class COLOR32>
+void Nv12ToColor32(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix) {
     SetMatYuv2Rgb(iMatrix);
-    YuvToRgbKernel<uchar2, BGRA32, uint2>
+    YuvToRgbKernel<uchar2, COLOR32, uint2>
         <<<dim3((nWidth + 63) / 32 / 2, (nHeight + 3) / 2 / 2), dim3(32, 2)>>>
         (dpNv12, nNv12Pitch, dpBgra, nBgraPitch, nWidth, nHeight);
 }
 
-void Nv12ToBgra64(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix) {
+template <class COLOR64>
+void Nv12ToColor64(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix) {
     SetMatYuv2Rgb(iMatrix);
-    YuvToRgbKernel<uchar2, BGRA64, ulonglong2>
+    YuvToRgbKernel<uchar2, COLOR64, ulonglong2>
         <<<dim3((nWidth + 63) / 32 / 2, (nHeight + 3) / 2 / 2), dim3(32, 2)>>>
         (dpNv12, nNv12Pitch, dpBgra, nBgraPitch, nWidth, nHeight);
 }
 
-void P016ToBgra32(uint8_t *dpP016, int nP016Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix) {
+template <class COLOR32>
+void YUV444ToColor32(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix) {
     SetMatYuv2Rgb(iMatrix);
-    YuvToRgbKernel<ushort2, BGRA32, uint2>
+    Yuv444ToRgbKernel<uchar2, COLOR32, uint2>
+        <<<dim3((nWidth + 63) / 32 / 2, (nHeight + 3) / 2), dim3(32, 2) >>>
+        (dpYUV444, nPitch, dpBgra, nBgraPitch, nWidth, nHeight);
+}
+
+template <class COLOR64>
+void YUV444ToColor64(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix) {
+    SetMatYuv2Rgb(iMatrix);
+    Yuv444ToRgbKernel<uchar2, COLOR64, ulonglong2>
+        <<<dim3((nWidth + 63) / 32 / 2, (nHeight + 3) / 2), dim3(32, 2) >>>
+        (dpYUV444, nPitch, dpBgra, nBgraPitch, nWidth, nHeight);
+}
+
+template <class COLOR32>
+void P016ToColor32(uint8_t *dpP016, int nP016Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix) {
+    SetMatYuv2Rgb(iMatrix);
+    YuvToRgbKernel<ushort2, COLOR32, uint2>
         <<<dim3((nWidth + 63) / 32 / 2, (nHeight + 3) / 2 / 2), dim3(32, 2)>>>
         (dpP016, nP016Pitch, dpBgra, nBgraPitch, nWidth, nHeight);
 }
 
-void P016ToBgra64(uint8_t *dpP016, int nP016Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix) {
+template <class COLOR64>
+void P016ToColor64(uint8_t *dpP016, int nP016Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix) {
     SetMatYuv2Rgb(iMatrix);
-    YuvToRgbKernel<ushort2, BGRA64, ulonglong2>
+    YuvToRgbKernel<ushort2, COLOR64, ulonglong2>
         <<<dim3((nWidth + 63) / 32 / 2, (nHeight + 3) / 2 / 2), dim3(32, 2)>>>
         (dpP016, nP016Pitch, dpBgra, nBgraPitch, nWidth, nHeight);
 }
 
-void Nv12ToBgrPlanar(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgrp, int nBgrpPitch, int nWidth, int nHeight, int iMatrix) {
+template <class COLOR32>
+void YUV444P16ToColor32(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix) {
     SetMatYuv2Rgb(iMatrix);
-    YuvToRgbPlanarKernel<uchar2, BGRA32, uchar2>
+    Yuv444ToRgbKernel<ushort2, COLOR32, uint2>
+        <<<dim3((nWidth + 63) / 32 / 2, (nHeight + 3) / 2), dim3(32, 2) >>>
+        (dpYUV444, nPitch, dpBgra, nBgraPitch, nWidth, nHeight);
+}
+
+template <class COLOR64>
+void YUV444P16ToColor64(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix) {
+    SetMatYuv2Rgb(iMatrix);
+    Yuv444ToRgbKernel<ushort2, COLOR64, ulonglong2>
+        <<<dim3((nWidth + 63) / 32 / 2, (nHeight + 3) / 2), dim3(32, 2) >>>
+        (dpYUV444, nPitch, dpBgra, nBgraPitch, nWidth, nHeight);
+}
+
+template <class COLOR32>
+void Nv12ToColorPlanar(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgrp, int nBgrpPitch, int nWidth, int nHeight, int iMatrix) {
+    SetMatYuv2Rgb(iMatrix);
+    YuvToRgbPlanarKernel<uchar2, COLOR32, uchar2>
         <<<dim3((nWidth + 63) / 32 / 2, (nHeight + 3) / 2 / 2), dim3(32, 2)>>>
         (dpNv12, nNv12Pitch, dpBgrp, nBgrpPitch, nWidth, nHeight);
 }
 
-void P016ToBgrPlanar(uint8_t *dpP016, int nP016Pitch, uint8_t *dpBgrp, int nBgrpPitch, int nWidth, int nHeight, int iMatrix) {
+template <class COLOR32>
+void P016ToColorPlanar(uint8_t *dpP016, int nP016Pitch, uint8_t *dpBgrp, int nBgrpPitch, int nWidth, int nHeight, int iMatrix) {
     SetMatYuv2Rgb(iMatrix);
-    YuvToRgbPlanarKernel<ushort2, BGRA32, uchar2>
+    YuvToRgbPlanarKernel<ushort2, COLOR32, uchar2>
         <<<dim3((nWidth + 63) / 32 / 2, (nHeight + 3) / 2 / 2), dim3(32, 2)>>>
         (dpP016, nP016Pitch, dpBgrp, nBgrpPitch, nWidth, nHeight);
 }
+
+template <class COLOR32>
+void YUV444ToColorPlanar(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgrp, int nBgrpPitch, int nWidth, int nHeight, int iMatrix) {
+    SetMatYuv2Rgb(iMatrix);
+    Yuv444ToRgbPlanarKernel<uchar2, COLOR32, uchar2>
+        <<<dim3((nWidth + 63) / 32 / 2, (nHeight + 3) / 2), dim3(32, 2) >>>
+        (dpYUV444, nPitch, dpBgrp, nBgrpPitch, nWidth, nHeight);
+}
+
+template <class COLOR32>
+void YUV444P16ToColorPlanar(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgrp, int nBgrpPitch, int nWidth, int nHeight, int iMatrix) {
+    SetMatYuv2Rgb(iMatrix);
+    Yuv444ToRgbPlanarKernel<ushort2, COLOR32, uchar2>
+        << <dim3((nWidth + 63) / 32 / 2, (nHeight + 3) / 2), dim3(32, 2) >> >
+        (dpYUV444, nPitch, dpBgrp, nBgrpPitch, nWidth, nHeight);
+}
+
+// Explicit Instantiation
+template void Nv12ToColor32<BGRA32>(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
+template void Nv12ToColor32<RGBA32>(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
+template void Nv12ToColor64<BGRA64>(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
+template void Nv12ToColor64<RGBA64>(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
+template void YUV444ToColor32<BGRA32>(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
+template void YUV444ToColor32<RGBA32>(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
+template void YUV444ToColor64<BGRA64>(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
+template void YUV444ToColor64<RGBA64>(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
+template void P016ToColor32<BGRA32>(uint8_t *dpP016, int nP016Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
+template void P016ToColor32<RGBA32>(uint8_t *dpP016, int nP016Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
+template void P016ToColor64<BGRA64>(uint8_t *dpP016, int nP016Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
+template void P016ToColor64<RGBA64>(uint8_t *dpP016, int nP016Pitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
+template void YUV444P16ToColor32<BGRA32>(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
+template void YUV444P16ToColor32<RGBA32>(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
+template void YUV444P16ToColor64<BGRA64>(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
+template void YUV444P16ToColor64<RGBA64>(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgra, int nBgraPitch, int nWidth, int nHeight, int iMatrix);
+template void Nv12ToColorPlanar<BGRA32>(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgrp, int nBgrpPitch, int nWidth, int nHeight, int iMatrix);
+template void Nv12ToColorPlanar<RGBA32>(uint8_t *dpNv12, int nNv12Pitch, uint8_t *dpBgrp, int nBgrpPitch, int nWidth, int nHeight, int iMatrix);
+template void P016ToColorPlanar<BGRA32>(uint8_t *dpP016, int nP016Pitch, uint8_t *dpBgrp, int nBgrpPitch, int nWidth, int nHeight, int iMatrix);
+template void P016ToColorPlanar<RGBA32>(uint8_t *dpP016, int nP016Pitch, uint8_t *dpBgrp, int nBgrpPitch, int nWidth, int nHeight, int iMatrix);
+template void YUV444ToColorPlanar<BGRA32>(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgrp, int nBgrpPitch, int nWidth, int nHeight, int iMatrix);
+template void YUV444ToColorPlanar<RGBA32>(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgrp, int nBgrpPitch, int nWidth, int nHeight, int iMatrix);
+template void YUV444P16ToColorPlanar<BGRA32>(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgrp, int nBgrpPitch, int nWidth, int nHeight, int iMatrix);
+template void YUV444P16ToColorPlanar<RGBA32>(uint8_t *dpYUV444, int nPitch, uint8_t *dpBgrp, int nBgrpPitch, int nWidth, int nHeight, int iMatrix);
 
 template<class YuvUnit, class RgbUnit>
 __device__ inline YuvUnit RgbToY(RgbUnit r, RgbUnit g, RgbUnit b) {

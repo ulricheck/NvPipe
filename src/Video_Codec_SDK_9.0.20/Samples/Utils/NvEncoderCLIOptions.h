@@ -82,12 +82,31 @@ public:
     virtual bool IsCodecHEVC() {
         return GetEncodeGUID() == NV_ENC_CODEC_HEVC_GUID;
     }
-    std::string GetHelpMessage(bool bMeOnly = false, bool bUnbuffered = false, bool bHide444 = false)
+    std::string GetHelpMessage(bool bMeOnly = false, bool bUnbuffered = false, bool bHide444 = false, bool bOutputInVidMem = false)
     {
         std::ostringstream oss;
-            oss << "-codec       Codec: " << szCodecNames << std::endl
-                << "-preset      Preset: " << (bLowLatency ? szLowLatencyPresetNames : szPresetNames) << std::endl
-                << "-profile     H264: " << szH264ProfileNames << "; HEVC: " << szHevcProfileNames << std::endl;
+      
+        if (bOutputInVidMem && bMeOnly)
+        {
+            oss << "-codec       Codec: " << "h264" << std::endl;
+        }
+        else
+        {
+            oss << "-codec       Codec: " << szCodecNames << std::endl;
+        }
+       
+            oss << "-preset      Preset: " << (bLowLatency ? szLowLatencyPresetNames : szPresetNames) << std::endl
+                << "-profile     H264: " << szH264ProfileNames;
+
+        if (bOutputInVidMem && bMeOnly)
+        {
+            oss << std::endl;
+        }
+        else
+        {
+            oss << "; HEVC: " << szHevcProfileNames << std::endl;
+        }
+
         if (!bHide444 && !bLowLatency)
         {
             oss << "-444         (Only for RGB input) YUV444 encode" << std::endl;
@@ -184,7 +203,6 @@ public:
                 tokens[i] == "-maxbitrate" && ++i != tokens.size() && ParseBitRate("-maxbitrate", tokens[i], &config.rcParams.maxBitRate)                                                 ||
                 tokens[i] == "-vbvbufsize" && ++i != tokens.size() && ParseBitRate("-vbvbufsize", tokens[i], &config.rcParams.vbvBufferSize)                                              ||
                 tokens[i] == "-vbvinit"    && ++i != tokens.size() && ParseBitRate("-vbvinit",    tokens[i], &config.rcParams.vbvInitialDelay)                                            ||
-                tokens[i] == "-lookahead"  && ++i != tokens.size() && ParseInt("-lookahead",      tokens[i], &config.rcParams.lookaheadDepth) && (config.rcParams.enableLookahead = true) ||
                 tokens[i] == "-cq"         && ++i != tokens.size() && ParseInt("-cq",             tokens[i], &config.rcParams.targetQuality)                                              ||
                 tokens[i] == "-initqp"     && ++i != tokens.size() && ParseQp("-initqp",          tokens[i], &config.rcParams.initialRCQP) && (config.rcParams.enableInitialRCQP = true)  ||
                 tokens[i] == "-qmin"       && ++i != tokens.size() && ParseQp("-qmin",            tokens[i], &config.rcParams.minQP) && (config.rcParams.enableMinQP = true)              ||
@@ -193,6 +211,11 @@ public:
                 tokens[i] == "-temporalaq" && (config.rcParams.enableTemporalAQ = true)
             )
             {
+                continue;
+            }
+            if (tokens[i] == "-lookahead" && ++i != tokens.size() && ParseInt("-lookahead", tokens[i], &config.rcParams.lookaheadDepth))
+            {
+                config.rcParams.enableLookahead = config.rcParams.lookaheadDepth > 0;
                 continue;
             }
             int aqStrength;

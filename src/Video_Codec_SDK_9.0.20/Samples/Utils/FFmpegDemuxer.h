@@ -25,9 +25,10 @@ private:
     AVBSFContext *bsfc = NULL;
 
     int iVideoStream;
-    bool bMp4H264;
+    bool bMp4H264, bMp4HEVC;
     AVCodecID eVideoCodec;
-    int nWidth, nHeight, nBitDepth;
+    AVPixelFormat eChromaFormat;
+    int nWidth, nHeight, nBitDepth, nBPP, nChromaHeight;
 
 public:
     class DataProvider {
@@ -56,18 +57,60 @@ private:
         eVideoCodec = fmtc->streams[iVideoStream]->codecpar->codec_id;
         nWidth = fmtc->streams[iVideoStream]->codecpar->width;
         nHeight = fmtc->streams[iVideoStream]->codecpar->height;
-        nBitDepth = 8;
-        if (fmtc->streams[iVideoStream]->codecpar->format == AV_PIX_FMT_YUV420P10LE)
+        eChromaFormat = (AVPixelFormat)fmtc->streams[iVideoStream]->codecpar->format;
+
+        switch (eChromaFormat)
+        {
+        case AV_PIX_FMT_YUV420P10LE:
             nBitDepth = 10;
-        if (fmtc->streams[iVideoStream]->codecpar->format == AV_PIX_FMT_YUV420P12LE)
+            nChromaHeight = (nHeight + 1) >> 1;
+            nBPP = 2;
+            break;
+        case AV_PIX_FMT_YUV420P12LE:
             nBitDepth = 12;
+            nChromaHeight = (nHeight + 1) >> 1;
+            nBPP = 2;
+            break;
+        case AV_PIX_FMT_YUV444P10LE:
+            nBitDepth = 10;
+            nChromaHeight = nHeight << 1;
+            nBPP = 2;
+            break;
+        case AV_PIX_FMT_YUV444P12LE:
+            nBitDepth = 12;
+            nChromaHeight = nHeight << 1;
+            nBPP = 2;
+            break;
+        case AV_PIX_FMT_YUV444P:
+            nBitDepth = 8;
+            nChromaHeight = nHeight << 1;
+            nBPP = 1;
+            break;
+        case AV_PIX_FMT_YUV420P:
+        case AV_PIX_FMT_YUVJ420P:
+        case AV_PIX_FMT_YUVJ422P:   // jpeg decoder output is subsampled to NV12 for 422/444 so treat it as 420
+        case AV_PIX_FMT_YUVJ444P:   // jpeg decoder output is subsampled to NV12 for 422/444 so treat it as 420
+            nBitDepth = 8;
+            nChromaHeight = (nHeight + 1) >> 1;
+            nBPP = 1;
+            break;
+        default:
+            LOG(WARNING) << "ChromaFormat not recognized. Assuming 420";
+            nBitDepth = 8;
+            nChromaHeight = (nHeight + 1) >> 1;
+            nBPP = 1;
+        }
 
         bMp4H264 = eVideoCodec == AV_CODEC_ID_H264 && (
                 !strcmp(fmtc->iformat->long_name, "QuickTime / MOV") 
                 || !strcmp(fmtc->iformat->long_name, "FLV (Flash Video)") 
                 || !strcmp(fmtc->iformat->long_name, "Matroska / WebM")
             );
-
+        bMp4HEVC = eVideoCodec == AV_CODEC_ID_HEVC && (
+                !strcmp(fmtc->iformat->long_name, "QuickTime / MOV")
+                || !strcmp(fmtc->iformat->long_name, "FLV (Flash Video)")
+                || !strcmp(fmtc->iformat->long_name, "Matroska / WebM")
+            );
         av_init_packet(&pkt);
         pkt.data = NULL;
         pkt.size = 0;
@@ -82,13 +125,22 @@ private:
                 return;
             }
             ck(av_bsf_alloc(bsf, &bsfc));
-            bsfc->par_in = fmtc->streams[iVideoStream]->codecpar;
+            avcodec_parameters_copy(bsfc->par_in, fmtc->streams[iVideoStream]->codecpar);
+            ck(av_bsf_init(bsfc));
+        }
+        if (bMp4HEVC) {
+            const AVBitStreamFilter *bsf = av_bsf_get_by_name("hevc_mp4toannexb");
+            if (!bsf) {
+                LOG(ERROR) << "FFmpeg error: " << __FILE__ << " " << __LINE__ << " " << "av_bsf_get_by_name() failed";
+                return;
+            }
+            ck(av_bsf_alloc(bsf, &bsfc));
+            avcodec_parameters_copy(bsfc->par_in, fmtc->streams[iVideoStream]->codecpar);
             ck(av_bsf_init(bsfc));
         }
     }
 
     AVFormatContext *CreateFormatContext(DataProvider *pDataProvider) {
-        av_register_all();
 
         AVFormatContext *ctx = NULL;
         if (!(ctx = avformat_alloc_context())) {
@@ -116,7 +168,6 @@ private:
     }
 
     AVFormatContext *CreateFormatContext(const char *szFilePath) {
-        av_register_all();
         avformat_network_init();
 
         AVFormatContext *ctx = NULL;
@@ -126,7 +177,7 @@ private:
 
 public:
     FFmpegDemuxer(const char *szFilePath) : FFmpegDemuxer(CreateFormatContext(szFilePath)) {}
-    FFmpegDemuxer(DataProvider *pDataProvider) : FFmpegDemuxer(CreateFormatContext(pDataProvider)) {}
+    FFmpegDemuxer(DataProvider *pDataProvider) : FFmpegDemuxer(CreateFormatContext(pDataProvider)) {avioc = fmtc->pb;}
     ~FFmpegDemuxer() {
         if (pkt.data) {
             av_packet_unref(&pkt);
@@ -135,7 +186,12 @@ public:
             av_packet_unref(&pktFiltered);
         }
 
+        if (bsfc) {
+            av_bsf_free(&bsfc);
+        }
+
         avformat_close_input(&fmtc);
+
         if (avioc) {
             av_freep(&avioc->buffer);
             av_freep(&avioc);
@@ -143,6 +199,9 @@ public:
     }
     AVCodecID GetVideoCodec() {
         return eVideoCodec;
+    }
+    AVPixelFormat GetChromaFormat() {
+        return eChromaFormat;
     }
     int GetWidth() {
         return nWidth;
@@ -154,7 +213,7 @@ public:
         return nBitDepth;
     }
     int GetFrameSize() {
-        return nBitDepth == 8 ? nWidth * nHeight * 3 / 2: nWidth * nHeight * 3;
+        return nWidth * (nHeight + nChromaHeight) * nBPP;
     }
     bool Demux(uint8_t **ppVideo, int *pnVideoBytes) {
         if (!fmtc) {
@@ -175,7 +234,7 @@ public:
             return false;
         }
 
-        if (bMp4H264) {
+        if (bMp4H264 || bMp4HEVC) {
             if (pktFiltered.data) {
                 av_packet_unref(&pktFiltered);
             }
@@ -210,3 +269,5 @@ inline cudaVideoCodec FFmpeg2NvCodecId(AVCodecID id) {
     default                     : return cudaVideoCodec_NumCodecs;
     }
 }
+
+

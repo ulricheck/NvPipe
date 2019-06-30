@@ -1,5 +1,5 @@
 /*
-* Copyright 2017-2018 NVIDIA Corporation.  All rights reserved.
+* Copyright 2017-2019 NVIDIA Corporation.  All rights reserved.
 *
 * Please refer to the NVIDIA end user license agreement (EULA) associated
 * with this source code for terms and conditions that govern your use of
@@ -256,7 +256,7 @@ protected:
     *  NvEncoder class constructor cannot be called directly by the application.
     */
     NvEncoder(NV_ENC_DEVICE_TYPE eDeviceType, void *pDevice, uint32_t nWidth, uint32_t nHeight,
-        NV_ENC_BUFFER_FORMAT eBufferFormat, uint32_t m_nOutputDelay, bool bMotionEstimationOnly);
+        NV_ENC_BUFFER_FORMAT eBufferFormat, uint32_t nOutputDelay, bool bMotionEstimationOnly, bool bOutputInVideoMemory = false);
 
     /**
     *  @brief This function is used to check if hardware encoder is properly initialized.
@@ -268,14 +268,21 @@ protected:
     *  This is non public function and is called by derived class for allocating
     *  and registering input buffers.
     */
-    void RegisterResources(std::vector<void*> inputframes, NV_ENC_INPUT_RESOURCE_TYPE eResourceType,
+    void RegisterInputResources(std::vector<void*> inputframes, NV_ENC_INPUT_RESOURCE_TYPE eResourceType,
         int width, int height, int pitch, NV_ENC_BUFFER_FORMAT bufferFormat, bool bReferenceFrame = false);
 
     /**
     *  @brief This function is used to unregister resources which had been previously registered for encoding
-    *         using RegisterResources() function.
+    *         using RegisterInputResources() function.
     */
-    void UnregisterResources();
+    void UnregisterInputResources();
+
+    /**
+    *  @brief This function is used to register CUDA, D3D or OpenGL input or output buffers with NvEncodeAPI.
+    */
+    NV_ENC_REGISTERED_PTR RegisterResource(void *pBuffer, NV_ENC_INPUT_RESOURCE_TYPE eResourceType,
+        int width, int height, int pitch, NV_ENC_BUFFER_FORMAT bufferFormat, NV_ENC_BUFFER_USAGE bufferUsage = NV_ENC_INPUT_IMAGE);
+
     /**
     *  @brief This function returns maximum width used to open the encoder session.
     *  All encode input buffers are allocated using maximum dimensions.
@@ -289,16 +296,43 @@ protected:
     uint32_t GetMaxEncodeHeight() const { return m_nMaxEncodeHeight; }
 
     /**
+    *  @brief This function returns the completion event.
+    */
+    void* GetCompletionEvent(uint32_t eventIdx) { return (m_vpCompletionEvent.size() == m_nEncoderBuffer) ? m_vpCompletionEvent[eventIdx] : nullptr; }
+
+    /**
     *  @brief This function returns the current pixel format.
     */
     NV_ENC_BUFFER_FORMAT GetPixelFormat() const { return m_eBufferFormat; }
 
-private:
     /**
-    *  @brief This is a private function which is used to wait for completion of encode command.
+    *  @brief This function is used to submit the encode commands to the  
+    *         NVENC hardware.
+    */
+    NVENCSTATUS DoEncode(NV_ENC_INPUT_PTR inputBuffer, NV_ENC_OUTPUT_PTR outputBuffer, NV_ENC_PIC_PARAMS *pPicParams);
+
+    /**
+    *  @brief This function is used to submit the encode commands to the 
+    *         NVENC hardware for ME only mode.
+    */
+    NVENCSTATUS DoMotionEstimation(NV_ENC_INPUT_PTR inputBuffer, NV_ENC_INPUT_PTR inputBufferForReference, NV_ENC_OUTPUT_PTR outputBuffer);
+
+    /**
+    *  @brief This function is used to map the input buffers to NvEncodeAPI.
+    */
+    void MapResources(uint32_t bfrIdx);
+
+    /**
+    *  @brief This function is used to wait for completion of encode command.
     */
     void WaitForCompletionEvent(int iEvent);
 
+    /**
+    *  @brief This function is used to send EOS to HW encoder.
+    */
+    void SendEOS();
+
+private:
     /**
     *  @brief This is a private function which is used to check if there is any
               buffering done by encoder.
@@ -311,18 +345,6 @@ private:
     *  @brief This is a private function which is used to load the encode api shared library.
     */
     void LoadNvEncApi();
-
-    /**
-    *  @brief This is a private function which is used to submit the encode
-    *         commands to the NVENC hardware.
-    */
-    void DoEncode(NV_ENC_INPUT_PTR inputBuffer, std::vector<std::vector<uint8_t>> &vPacket, NV_ENC_PIC_PARAMS *pPicParams);
-
-    /**
-    *  @brief This is a private function which is used to submit the encode
-    *         commands to the NVENC hardware for ME only mode.
-    */
-    void DoMotionEstimation(NV_ENC_INPUT_PTR inputBuffer, NV_ENC_INPUT_PTR referenceFrame, std::vector<uint8_t> &mvData);
 
     /**
     *  @brief This is a private function which is used to get the output packets
@@ -361,6 +383,11 @@ private:
     */
     void DestroyHWEncoder();
 
+    /**
+    *  @brief This function is used to flush the encoder queue.
+    */
+    void FlushEncoder();
+
 private:
     /**
     *  @brief This is a pure virtual function which is used to allocate input buffers.
@@ -376,12 +403,22 @@ private:
 
 protected:
     bool m_bMotionEstimationOnly = false;
+    bool m_bOutputInVideoMemory = false;
     void *m_hEncoder = nullptr;
     NV_ENCODE_API_FUNCTION_LIST m_nvenc;
     std::vector<NvEncInputFrame> m_vInputFrames;
     std::vector<NV_ENC_REGISTERED_PTR> m_vRegisteredResources;
     std::vector<NvEncInputFrame> m_vReferenceFrames;
     std::vector<NV_ENC_REGISTERED_PTR> m_vRegisteredResourcesForReference;
+    std::vector<NV_ENC_INPUT_PTR> m_vMappedInputBuffers;
+    std::vector<NV_ENC_INPUT_PTR> m_vMappedRefBuffers;
+    std::vector<void *> m_vpCompletionEvent;
+
+    int32_t m_iToSend = 0;
+    int32_t m_iGot = 0;
+    int32_t m_nEncoderBuffer = 0;
+    int32_t m_nOutputDelay = 0;
+
 private:
     uint32_t m_nWidth;
     uint32_t m_nHeight;
@@ -392,16 +429,9 @@ private:
     NV_ENC_CONFIG m_encodeConfig = {};
     bool m_bEncoderInitialized = false;
     uint32_t m_nExtraOutputDelay = 3;
-    std::vector<NV_ENC_INPUT_PTR> m_vMappedInputBuffers;
-    std::vector<NV_ENC_INPUT_PTR> m_vMappedRefBuffers;
     std::vector<NV_ENC_OUTPUT_PTR> m_vBitstreamOutputBuffer;
     std::vector<NV_ENC_OUTPUT_PTR> m_vMVDataOutputBuffer;
-    std::vector<void *> m_vpCompletionEvent;
     uint32_t m_nMaxEncodeWidth = 0;
     uint32_t m_nMaxEncodeHeight = 0;
     void* m_hModule = nullptr;
-    int32_t m_iToSend = 0;
-    int32_t m_iGot = 0;
-    int32_t m_nEncoderBuffer = 0;
-    int32_t m_nOutputDelay = 0;
 };

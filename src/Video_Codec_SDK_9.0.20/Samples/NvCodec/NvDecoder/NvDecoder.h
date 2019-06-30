@@ -103,24 +103,44 @@ public:
     int GetWidth() { assert(m_nWidth); return m_nWidth; }
 
     /**
-    *  @brief  This function is used to get the current decode height.
+    *  @brief  This function is used to get the current decode height (Luma height).
     */
-    int GetHeight() { assert(m_nHeight); return m_nHeight; }
+    int GetHeight() { assert(m_nLumaHeight); return m_nLumaHeight; }
 
+    /**
+    *  @brief  This function is used to get the current chroma height.
+    */
+    int GetChromaHeight() { assert(m_nChromaHeight); return m_nChromaHeight; }
+
+    /**
+    *  @brief  This function is used to get the number of chroma planes.
+    */
+    int GetNumChromaPlanes() { assert(m_nNumChromaPlanes); return m_nNumChromaPlanes; }
+    
     /**
     *   @brief  This function is used to get the current frame size based on pixel format.
     */
-    int GetFrameSize() { assert(m_nWidth); return m_nWidth * m_nHeight * 3 / (m_nBitDepthMinus8 ? 1 : 2); }
+    int GetFrameSize() { assert(m_nWidth); return m_nWidth * (m_nLumaHeight + m_nChromaHeight * m_nNumChromaPlanes) * m_nBPP; }
 
     /**
     *  @brief  This function is used to get the pitch of the device buffer holding the decoded frame.
     */
-    int GetDeviceFramePitch() { assert(m_nWidth); return m_nDeviceFramePitch ? (int)m_nDeviceFramePitch : m_nWidth * (m_nBitDepthMinus8 ? 2 : 1); }
+    int GetDeviceFramePitch() { assert(m_nWidth); return m_nDeviceFramePitch ? (int)m_nDeviceFramePitch : m_nWidth * m_nBPP; }
 
     /**
     *   @brief  This function is used to get the bit depth associated with the pixel format.
     */
     int GetBitDepth() { assert(m_nWidth); return m_nBitDepthMinus8 + 8; }
+
+    /**
+    *   @brief  This function is used to get the bytes used per pixel.
+    */
+    int GetBPP() { assert(m_nWidth); return m_nBPP; }
+
+    /**
+    *   @brief  This function is used to get the YUV chroma format
+    */
+    cudaVideoSurfaceFormat GetOutputFormat() { return m_eOutputFormat; }
 
     /**
     *   @brief  This function is used to get information about the video stream (codec, display parameters etc)
@@ -135,6 +155,14 @@ public:
     /**
     *   @brief  This function decodes a frame and returns frames that are available for display.
         The frames should be used or buffered before making subsequent calls to the Decode function again
+    *   @param  pData - pointer to the data buffer that is to be decoded
+    *   @param  nSize - size of the data buffer in bytes
+    *   @param  pppFrame - CUvideopacketflags for setting decode options
+    *   @param  pnFrameReturned	 - pointer to array of decoded frames that are returned
+    *   @param  flags - CUvideopacketflags for setting decode options	
+    *   @param  ppTimestamp - pointer to array of timestamps for decoded frames that are returned
+    *   @param  timestamp - presentation timestamp
+    *   @param  stream - CUstream to be used for post-processing operations
     */
     bool Decode(const uint8_t *pData, int nSize, uint8_t ***pppFrame, int *pnFrameReturned, uint32_t flags = 0, int64_t **ppTimestamp = NULL, int64_t timestamp = 0, CUstream stream = 0);
 
@@ -143,16 +171,28 @@ public:
     *   This makes the buffers available for use by the application without the buffers
     *   getting overwritten, even if subsequent decode calls are made. The frame buffers
     *   remain locked, until ::UnlockFrame() is called
+    *   @param  pData - pointer to the data buffer that is to be decoded
+    *   @param  nSize - size of the data buffer in bytes
+    *   @param  pppFrame - CUvideopacketflags for setting decode options
+    *   @param  pnFrameReturned	 - pointer to array of decoded frames that are returned
+    *   @param  flags - CUvideopacketflags for setting decode options	
+    *   @param  ppTimestamp - pointer to array of timestamps for decoded frames that are returned
+    *   @param  timestamp - presentation timestamp	
+    *   @param  stream - CUstream to be used for post-processing operations
     */
     bool DecodeLockFrame(const uint8_t *pData, int nSize, uint8_t ***pppFrame, int *pnFrameReturned, uint32_t flags = 0, int64_t **ppTimestamp = NULL, int64_t timestamp = 0, CUstream stream = 0);
 
     /**
     *   @brief  This function unlocks the frame buffer and makes the frame buffers available for write again
+    *   @param  ppFrame - pointer to array of frames that are to be unlocked	
+    *   @param  nFrame - number of frames to be unlocked
     */
     void UnlockFrame(uint8_t **ppFrame, int nFrame);
 
     /**
     *   @brief  This function allow app to set decoder reconfig params
+    *   @param  pCropRect - cropping rectangle coordinates
+    *   @param  pResizeDim - width and height of resized output
     */
     int setReconfigParams(const Rect * pCropRect, const Dim * pResizeDim);
 
@@ -203,13 +243,16 @@ private:
     CUvideodecoder m_hDecoder = NULL;
     bool m_bUseDeviceFrame;
     // dimension of the output
-    unsigned int m_nWidth = 0, m_nHeight = 0;
+    unsigned int m_nWidth = 0, m_nLumaHeight = 0, m_nChromaHeight = 0;
+    unsigned int m_nNumChromaPlanes = 0;
     // height of the mapped surface 
     int m_nSurfaceHeight = 0;
     int m_nSurfaceWidth = 0;
     cudaVideoCodec m_eCodec = cudaVideoCodec_NumCodecs;
     cudaVideoChromaFormat m_eChromaFormat;
+    cudaVideoSurfaceFormat m_eOutputFormat;
     int m_nBitDepthMinus8 = 0;
+    int m_nBPP = 1;
     CUVIDEOFORMAT m_videoFormat = {};
     Rect m_displayRect = {};
     // stock of frames

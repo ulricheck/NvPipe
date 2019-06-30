@@ -29,7 +29,6 @@ private:
 
 public:
     FFmpegStreamer(AVCodecID eCodecId, int nWidth, int nHeight, int nFps, const char *szInFilePath) : nFps(nFps) {
-        av_register_all();
         avformat_network_init();
         oc = avformat_alloc_context();
         if (!oc) {
@@ -46,8 +45,8 @@ public:
         fmt->video_codec = eCodecId;
 
         oc->oformat = fmt;
-        sprintf(oc->filename, "%s", szInFilePath);
-        LOG(INFO) << "Streaming destination: " << oc->filename;
+        oc->url = av_strdup(szInFilePath);
+        LOG(INFO) << "Streaming destination: " << oc->url;
 
         // Add video stream to oc
         vs = avformat_new_stream(oc, NULL);
@@ -64,9 +63,9 @@ public:
         vpar->width = nWidth;
         vpar->height = nHeight;
 
-        // Every thing is ready. Now open the output stream.
-        if (avio_open(&oc->pb, oc->filename, AVIO_FLAG_WRITE) < 0) {
-            LOG(ERROR) << "FFMPEG: Could not open " << oc->filename;
+        // Everything is ready. Now open the output stream.
+        if (avio_open(&oc->pb, oc->url, AVIO_FLAG_WRITE) < 0) {
+            LOG(ERROR) << "FFMPEG: Could not open " << oc->url;
             return ;
         }
 
