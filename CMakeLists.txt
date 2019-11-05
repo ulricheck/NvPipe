@@ -24,8 +24,11 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-cmake_minimum_required(VERSION 3.2)
-project(NvPipe VERSION 1.0.0 LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.8)
+project(NvPipe VERSION 1.0.0 LANGUAGES CXX CUDA)
+
+include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+CONAN_BASIC_SETUP(TARGETS)
 
 SET(DEFAULT_BUILD_TYPE "Release")
 
@@ -54,54 +57,46 @@ option(NVPIPE_WITH_OPENGL "Enables the NvPipe OpenGL interface." ON)
 option(NVPIPE_BUILD_EXAMPLES "Builds the NvPipe example applications (requires both encoder and decoder)." ON)
 
 # Header
-configure_file(src/NvPipe.h.in include/NvPipe.h @ONLY)
-include_directories(${CMAKE_CURRENT_BINARY_DIR}/include)
+configure_file(include/NvPipe/NvPipe.h.in include/NvPipe/NvPipe.h @ONLY)
 
 # NvPipe shared library
 list(APPEND NVPIPE_SOURCES
     src/NvPipe.cu
-    src/Video_Codec_SDK_9.0.20/Samples/Utils/ColorSpace.cu
+    src/Utils/ColorSpace.cu
     )
+
 list(APPEND NVPIPE_LIBRARIES
-    ${CMAKE_DL_LIBS}
+    CONAN_PKG::nvidia-video-codec-sdk
     ${CUDA_LIBRARIES}
     ${CUDA_LIB}
     )
 
 if (NVPIPE_WITH_ENCODER)
     list(APPEND NVPIPE_SOURCES
-        src/Video_Codec_SDK_9.0.20/Samples/NvCodec/NvEncoder/NvEncoder.cpp
-        src/Video_Codec_SDK_9.0.20/Samples/NvCodec/NvEncoder/NvEncoderCuda.cpp
+        src/NvCodec/NvEncoder/NvEncoder.cpp
+        src/NvCodec/NvEncoder/NvEncoderCuda.cpp
         )
 endif()
 
-if (NVPIPE_WITH_DECODER)    
+if (NVPIPE_WITH_DECODER)
     list(APPEND NVPIPE_SOURCES
-        src/Video_Codec_SDK_9.0.20/Samples/NvCodec/NvDecoder/NvDecoder.cpp
+        src/NvCodec/NvDecoder/NvDecoder.cpp
         )
-    list(APPEND NVPIPE_LIBRARIES
-        nvcuvid
-        )
-
-    if (WIN32)
-        if (CMAKE_SIZEOF_VOID_P EQUAL 8)
-            link_directories(src/Video_Codec_SDK_9.0.20/Lib/x64)
-        elseif (CMAKE_SIZEOF_VOID_P EQUAL 4)
-            link_directories(src/Video_Codec_SDK_9.0.20/Lib/Win32)
-        endif()    
-    endif()
 endif()
 
 include(GNUInstallDirs)
 
 cuda_add_library(${PROJECT_NAME} SHARED ${NVPIPE_SOURCES})
+
 target_include_directories(${PROJECT_NAME} PUBLIC
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
     $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>
     )
 target_include_directories(${PROJECT_NAME} PRIVATE
-    $<BUILD_INTERFACE:src/Video_Codec_SDK_9.0.20/Samples src/Video_Codec_SDK_9.0.20/Samples/NvCodec src/Video_Codec_SDK_9.0.20/include ${CUDA_INCLUDE_DIRS}>
+    $<BUILD_INTERFACE:src/NvCodec ${CUDA_INCLUDE_DIRS}>
     )
+
 target_link_libraries(${PROJECT_NAME} ${NVPIPE_LIBRARIES})
 
 set_target_properties(${PROJECT_NAME} PROPERTIES
@@ -112,7 +107,7 @@ install(TARGETS ${PROJECT_NAME} EXPORT NvPipeConfig
     ARCHIVE  DESTINATION ${CMAKE_INSTALL_LIBDIR}
     LIBRARY  DESTINATION ${CMAKE_INSTALL_LIBDIR}
     RUNTIME  DESTINATION ${CMAKE_INSTALL_BINDIR})
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/include/NvPipe.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
+install(FILES ${PROJECT_BINARY_DIR}/include/NvPipe.h DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
 
 install(EXPORT NvPipeConfig DESTINATION share/NvPipe/cmake)
 

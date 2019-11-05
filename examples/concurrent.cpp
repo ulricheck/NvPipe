@@ -34,7 +34,7 @@
 
 #include <cuda_runtime_api.h>
 
-#include <NvPipe.h>
+#include <NvPipe/NvPipe.h>
 
 #include "utils.h"
 
