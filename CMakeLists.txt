@@ -137,6 +137,11 @@ if (NVPIPE_BUILD_EXAMPLES)
     target_link_libraries(nvpExampleFile PRIVATE ${PROJECT_NAME})
 
     if (NVPIPE_WITH_ENCODER AND NVPIPE_WITH_DECODER)
+        # Concurrent test
+        add_executable(nvpExampleDeviceInfo examples/deviceInfo.cpp)
+        target_link_libraries(nvpExampleDeviceInfo PRIVATE ${PROJECT_NAME})
+
+
         # Host/device memory comparison
         add_executable(nvpExampleMemory examples/memory.cpp)
         target_link_libraries(nvpExampleMemory PRIVATE ${PROJECT_NAME})
