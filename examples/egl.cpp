@@ -26,6 +26,7 @@
  */
 
 #include <NvPipe/NvPipe.h>
+#include <NvPipe/Utils/Logger.h>
 
 #include "utils.h"
 
@@ -35,6 +36,7 @@
 #include <EGL/egl.h>
 #include <GL/glew.h>
 
+simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
 
 void captureFramebufferPPM(GLuint framebuffer, uint32_t width, uint32_t height, const std::string& path)
 {

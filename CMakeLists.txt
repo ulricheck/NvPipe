@@ -59,10 +59,20 @@ option(NVPIPE_BUILD_EXAMPLES "Builds the NvPipe example applications (requires b
 # Header
 configure_file(include/NvPipe/NvPipe.h.in include/NvPipe/NvPipe.h @ONLY)
 
+list(APPEND NVPIPE_HEADERS
+    include/NvPipe/NvPipe.h
+    include/NvPipe/Utils/NvCodecUtils.h
+    include/NvPipe/Utils/Logger.h
+    include/NvPipe/Utils/DeviceInfo.h
+    )
+
 # NvPipe shared library
 list(APPEND NVPIPE_SOURCES
     src/NvPipe.cu
+    src/Utils/BitDepth.cu
+    src/Utils/Resize.cu
     src/Utils/ColorSpace.cu
+    src/Utils/DeviceInfo.cpp
     )
 
 list(APPEND NVPIPE_LIBRARIES
@@ -72,6 +82,10 @@ list(APPEND NVPIPE_LIBRARIES
     )
 
 if (NVPIPE_WITH_ENCODER)
+    list(APPEND NVPIPE_HEADERS
+        include/NvPipe/NvCodec/NvEncoder/NvEncoder.h
+        include/NvPipe/NvCodec/NvEncoder/NvEncoderCuda.h
+    )
     list(APPEND NVPIPE_SOURCES
         src/NvCodec/NvEncoder/NvEncoder.cpp
         src/NvCodec/NvEncoder/NvEncoderCuda.cpp
@@ -79,6 +93,9 @@ if (NVPIPE_WITH_ENCODER)
 endif()
 
 if (NVPIPE_WITH_DECODER)
+    list(APPEND NVPIPE_HEADERS
+        include/NvPipe/NvCodec/NvDecoder/NvDecoder.h
+        )
     list(APPEND NVPIPE_SOURCES
         src/NvCodec/NvDecoder/NvDecoder.cpp
         )
@@ -86,7 +103,7 @@ endif()
 
 include(GNUInstallDirs)
 
-cuda_add_library(${PROJECT_NAME} SHARED ${NVPIPE_SOURCES})
+cuda_add_library(${PROJECT_NAME} SHARED ${NVPIPE_SOURCES} ${NVPIPE_HEADERS})
 
 target_include_directories(${PROJECT_NAME} PUBLIC
     $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>

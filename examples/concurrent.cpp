@@ -35,9 +35,12 @@
 #include <cuda_runtime_api.h>
 
 #include <NvPipe/NvPipe.h>
+#include <NvPipe/Utils/Logger.h>
+
 
 #include "utils.h"
 
+simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
 
 void run(void* rgba, uint32_t width, uint32_t height, uint32_t index, std::mutex* printMutex)
 {
@@ -120,10 +123,10 @@ int main(int argc, char* argv[])
 {
     std::cout << "NvPipe example application: Concurrent encode/decode sessions." << std::endl;
 
-    const uint32_t width = 1920;
-    const uint32_t height = 1080;
+    const uint32_t width = 2048;
+    const uint32_t height = 1536;
 
-    const uint32_t numWorkersMax = 4;
+    const uint32_t numWorkersMax = 16;
 
 
     // Allocate dummy frame

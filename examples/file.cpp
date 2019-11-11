@@ -26,12 +26,15 @@
  */
 
 #include <NvPipe/NvPipe.h>
+#include <NvPipe/Utils/Logger.h>
 
 #include "utils.h"
 
 #include <iostream>
 #include <vector>
 #include <fstream>
+
+simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
 
 int main(int argc, char* argv[])
 {

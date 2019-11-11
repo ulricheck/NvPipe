@@ -10,7 +10,7 @@
 */
 
 #include <cuda_runtime.h>
-#include "../NvPipe/Utils/NvCodecUtils.h"
+#include "NvPipe/Utils/NvCodecUtils.h"
 
 template<typename YuvUnitx2>
 static __global__ void Resize(cudaTextureObject_t texY, cudaTextureObject_t texUv,
