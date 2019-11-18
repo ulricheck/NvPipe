@@ -4,7 +4,7 @@ import os
 
 class NvPipeConan(ConanFile):
     name = "nvpipe"
-    version = "0.2"
+    version = "0.3"
     generators = "cmake"
     settings = "os", "arch", "compiler", "build_type"
 
