@@ -20,7 +20,7 @@ class NvPipeConan(ConanFile):
         "with_opengl=True",
         )
 
-    exports = ["CMakeLists.txt", "FindNvPipe.cmake", "include/*", "src/*", "examples/*"]
+    exports = ["CMakeLists.txt", "FindNvPipe.cmake", "include/*", "src/*", "tests/*", "examples/*"]
 
     url="http://github.com/ulricheck/conan-nvpipe"
     license="nvidia demo code - license unknown"
