@@ -4,8 +4,7 @@
 
 #include "NvPipe/Utils/DeviceInfo.h"
 #include "NvPipe/Utils/NvCodecUtils.h"
-
-simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
+#include "spdlog/spdlog.h"
 
 std::string codec2string(CodecType ct) {
     switch (ct) {
@@ -46,23 +45,23 @@ int main(int argc, char *argv[])
 
     int numDevices{0};
     if (!di.deviceCount(numDevices)) {
-        LOG(ERROR) << "Error while getting GPU device count.";
+        spdlog::error("Error while getting GPU device count.");
         return 1;
     }
 
     if (numDevices == 0) {
-        LOG(ERROR) << "No nvidia GPU's found.";
+        spdlog::error("No nvidia GPU's found.");
         return 1;
     }
 
     DeviceInfoT device_info;
     for (int i=0; i < numDevices; i++) {
         di.getDeviceInfo(i, device_info);
-        LOG(INFO) << "Found device: " << device_info.device_name << " with " << device_info.count_cudacores << " CUDA cores" ;
-        LOG(INFO) << "Minimum device driver needed: " << device_info.required_driver_major << "." << device_info.required_driver_minor;
+        spdlog::info("Found device: {0} with {1} CUDA cores", device_info.device_name, device_info.count_cudacores);
+        spdlog::info("Minimum device driver needed: {0}.{1}", device_info.required_driver_major, device_info.required_driver_minor);
         for (auto& dec_cap : device_info.decoder_capabilities) {
             if (dec_cap.is_supported) {
-                LOG(INFO) << "  Supported Decoder: " << codec2string(dec_cap.codec_type) << " maxWidth: " << dec_cap.max_width << " maxHeight: " << dec_cap.max_height;
+                spdlog::info("  Supported Decoder: {0} maxWidth: {1} maxHeight: {2}", codec2string(dec_cap.codec_type), dec_cap.max_width, dec_cap.max_height);
             }
         }
     }

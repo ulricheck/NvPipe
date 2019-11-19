@@ -32,26 +32,26 @@ public:
         avformat_network_init();
         oc = avformat_alloc_context();
         if (!oc) {
-            LOG(ERROR) << "FFMPEG: avformat_alloc_context error";
+            spdlog::error("FFMPEG: avformat_alloc_context error");
             return;
         }
 
         // Set format on oc
         AVOutputFormat *fmt = av_guess_format("mpegts", NULL, NULL);
         if (!fmt) {
-            LOG(ERROR) << "Invalid format";
+            spdlog::error("Invalid format");
             return;
         }
         fmt->video_codec = eCodecId;
 
         oc->oformat = fmt;
         oc->url = av_strdup(szInFilePath);
-        LOG(INFO) << "Streaming destination: " << oc->url;
+        spdlog::info("Streaming destination: {0}", oc->url);
 
         // Add video stream to oc
         vs = avformat_new_stream(oc, NULL);
         if (!vs) {
-            LOG(ERROR) << "FFMPEG: Could not alloc video stream";
+            spdlog::error("FFMPEG: Could not alloc video stream");
             return;
         }
         vs->id = 0;
@@ -65,13 +65,13 @@ public:
 
         // Everything is ready. Now open the output stream.
         if (avio_open(&oc->pb, oc->url, AVIO_FLAG_WRITE) < 0) {
-            LOG(ERROR) << "FFMPEG: Could not open " << oc->url;
+            spdlog::error("FFMPEG: Could not open {0}", oc->url);
             return ;
         }
 
         // Write the container header
         if (avformat_write_header(oc, NULL)) {
-            LOG(ERROR) << "FFMPEG: avformat_write_header error!";
+            spdlog::error("FFMPEG: avformat_write_header error!");
             return;
         }
     }
@@ -101,7 +101,7 @@ public:
         int ret = av_write_frame(oc, &pkt);
         av_write_frame(oc, NULL);
         if (ret < 0) {
-            LOG(ERROR) << "FFMPEG: Error while writing video frame";
+            spdlog::error("FFMPEG: Error while writing video frame");
         }
 
         return true;

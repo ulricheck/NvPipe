@@ -276,7 +276,7 @@ inline int _ConvertSMVer2Cores(int major, int minor) {
 
     // If we don't find the values, we default use the previous one
     // to run properly
-    LOG(WARNING) << "MapSMtoCores for SM " << major << "." << minor << " is undefined. Default to use %d " << nGpuArchCoresPerSM[index - 1].Cores << "Cores/SM";
+    spdlog::warn("MapSMtoCores for SM {0}.{1} is undefined. Default to use {2} Cores/SM", major, minor, nGpuArchCoresPerSM[index - 1].Cores);
     return nGpuArchCoresPerSM[index - 1].Cores;
 }
 

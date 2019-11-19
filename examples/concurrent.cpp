@@ -35,12 +35,10 @@
 #include <cuda_runtime_api.h>
 
 #include <NvPipe/NvPipe.h>
-#include <NvPipe/Utils/Logger.h>
 
 
 #include "utils.h"
 
-simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
 
 void run(void* rgba, uint32_t width, uint32_t height, uint32_t index, std::mutex* printMutex)
 {

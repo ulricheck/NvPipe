@@ -62,7 +62,6 @@ configure_file(include/NvPipe/NvPipe.h.in include/NvPipe/NvPipe.h @ONLY)
 list(APPEND NVPIPE_HEADERS
     include/NvPipe/NvPipe.h
     include/NvPipe/Utils/NvCodecUtils.h
-    include/NvPipe/Utils/Logger.h
     include/NvPipe/Utils/DeviceInfo.h
     )
 
@@ -77,6 +76,7 @@ list(APPEND NVPIPE_SOURCES
 
 list(APPEND NVPIPE_LIBRARIES
     CONAN_PKG::nvidia-video-codec-sdk
+    CONAN_PKG::spdlog
     ${CUDA_LIBRARIES}
     ${CUDA_LIB}
     )
@@ -131,6 +131,8 @@ install(FILES ${PROJECT_BINARY_DIR}/include/NvPipe/NvPipe.h DESTINATION ${CMAKE_
 install(EXPORT NvPipeConfig DESTINATION share/NvPipe/cmake)
 
 export(TARGETS ${PROJECT_NAME} FILE NvPipeConfig.cmake)
+
+add_subdirectory(tests)
 
 # Examples
 if (NVPIPE_BUILD_EXAMPLES)

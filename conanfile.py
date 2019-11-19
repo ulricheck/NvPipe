@@ -29,7 +29,9 @@ class NvPipeConan(ConanFile):
     requires = (
         "cuda_dev_config/[>=1.0]@camposs/stable",
         "nvidia-video-codec-sdk/9.1.23@vendor/stable",  # private repository due to license terms - just provides includes and libs
-        )
+        "gtest/1.10.0",
+        "spdlog/1.4.2",
+    )
 
     def build(self):
         """ Define your project building. You decide the way of building it

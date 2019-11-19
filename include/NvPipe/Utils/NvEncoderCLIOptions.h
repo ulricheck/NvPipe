@@ -267,8 +267,8 @@ public:
         }
 
         funcInit(pParams);
-        LOG(INFO) << NvEncoderInitParam().MainParamToString(pParams);
-        LOG(TRACE) << NvEncoderInitParam().FullParamToString(pParams);
+        spdlog::info(NvEncoderInitParam().MainParamToString(pParams));
+        spdlog::trace(NvEncoderInitParam().FullParamToString(pParams));
     }
 
 private:
@@ -277,7 +277,7 @@ private:
         std::vector<std::string> vstrValueName = split(strValueNames, ' ');
         auto it = std::find(vstrValueName.begin(), vstrValueName.end(), strValue);
         if (it == vstrValueName.end()) {
-            LOG(ERROR) << strName << " options: " << strValueNames;
+            spdlog::error("{0} options: {1}", strName, strValueNames);
             return false;
         }
         *pValue = vValue[it - vstrValueName.begin()];
@@ -287,7 +287,7 @@ private:
     std::string ConvertValueToString(const std::vector<T> &vValue, const std::string &strValueNames, T value) {
         auto it = std::find(vValue.begin(), vValue.end(), value);
         if (it == vValue.end()) {
-            LOG(ERROR) << "Invalid value. Can't convert to one of " << strValueNames;
+            spdlog::error("Invalid value. Can't convert to one of {0}", strValueNames);
             return std::string();
         }
         return split(strValueNames, ' ')[it - vValue.begin()];
@@ -298,7 +298,7 @@ private:
             double r = std::stod(strValue, &l);
             char c = strValue[l];
             if (c != 0 && c != 'k' && c != 'm') {
-                LOG(ERROR) << strName << " units: 1, K, M (lower case also allowed)";
+                spdlog::error("{0} units: 1, K, M (lower case also allowed)", strName);
             }
             *pBitRate = (unsigned)((c == 'm' ? 1000000 : (c == 'k' ? 1000 : 1)) * r);
         } catch (std::invalid_argument) {
@@ -311,7 +311,7 @@ private:
         try {
             *pInt = std::stoi(strValue);
         } catch (std::invalid_argument) {
-            LOG(ERROR) << strName << " need a value of positive number";
+            spdlog::error("{0} need a value of positive number", strName);
             return false;
         }
         return true;
@@ -325,7 +325,7 @@ private:
             } else if (vQp.size() == 3) {
                 *pQp = {(unsigned)std::stoi(vQp[0]), (unsigned)std::stoi(vQp[1]), (unsigned)std::stoi(vQp[2])};
             } else {
-                LOG(ERROR) << strName << " qp_for_P_B_I or qp_P,qp_B,qp_I (no space is allowed)";
+                spdlog::error("{0} qp_for_P_B_I or qp_P,qp_B,qp_I (no space is allowed)", strName);
                 return false;
             }
         } catch (std::invalid_argument) {

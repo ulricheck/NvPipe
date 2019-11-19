@@ -40,16 +40,16 @@ public:
 private:
     FFmpegDemuxer(AVFormatContext *fmtc) : fmtc(fmtc) {
         if (!fmtc) {
-            LOG(ERROR) << "No AVFormatContext provided.";
+            spdlog::error("No AVFormatContext provided.");
             return;
         }
 
-        LOG(INFO) << "Media format: " << fmtc->iformat->long_name << " (" << fmtc->iformat->name << ")";
+        spdlog::info("Media format: {0} ({1})", fmtc->iformat->long_name, fmtc->iformat->name);
 
         ck(avformat_find_stream_info(fmtc, NULL));
         iVideoStream = av_find_best_stream(fmtc, AVMEDIA_TYPE_VIDEO, -1, -1, NULL, 0);
         if (iVideoStream < 0) {
-            LOG(ERROR) << "FFmpeg error: " << __FILE__ << " " << __LINE__ << " " << "Could not find stream in input file";
+            spdlog::error("FFmpeg error: {0} {1} Could not find stream in input file", __FILE__, __LINE__);
             return;
         }
 
@@ -95,7 +95,7 @@ private:
             nBPP = 1;
             break;
         default:
-            LOG(WARNING) << "ChromaFormat not recognized. Assuming 420";
+            spdlog::warn("ChromaFormat not recognized. Assuming 420");
             nBitDepth = 8;
             nChromaHeight = (nHeight + 1) >> 1;
             nBPP = 1;
@@ -121,7 +121,7 @@ private:
         if (bMp4H264) {
             const AVBitStreamFilter *bsf = av_bsf_get_by_name("h264_mp4toannexb");
             if (!bsf) {
-                LOG(ERROR) << "FFmpeg error: " << __FILE__ << " " << __LINE__ << " " << "av_bsf_get_by_name() failed";
+                spdlog::error("FFmpeg error: {0} {1} av_bsf_get_by_name() failed", __FILE__, __LINE__);
                 return;
             }
             ck(av_bsf_alloc(bsf, &bsfc));
@@ -131,7 +131,7 @@ private:
         if (bMp4HEVC) {
             const AVBitStreamFilter *bsf = av_bsf_get_by_name("hevc_mp4toannexb");
             if (!bsf) {
-                LOG(ERROR) << "FFmpeg error: " << __FILE__ << " " << __LINE__ << " " << "av_bsf_get_by_name() failed";
+                spdlog::error("FFmpeg error: {0} {1} av_bsf_get_by_name() failed", __FILE__, __LINE__);
                 return;
             }
             ck(av_bsf_alloc(bsf, &bsfc));
@@ -144,7 +144,7 @@ private:
 
         AVFormatContext *ctx = NULL;
         if (!(ctx = avformat_alloc_context())) {
-            LOG(ERROR) << "FFmpeg error: " << __FILE__ << " " << __LINE__;
+            spdlog::error("FFmpeg error: {0} {1}", __FILE__, __LINE__);
             return NULL;
         }
 
@@ -152,13 +152,13 @@ private:
         int avioc_buffer_size = 8 * 1024 * 1024;
         avioc_buffer = (uint8_t *)av_malloc(avioc_buffer_size);
         if (!avioc_buffer) {
-            LOG(ERROR) << "FFmpeg error: " << __FILE__ << " " << __LINE__;
+            spdlog::error("FFmpeg error: {0} {1}", __FILE__, __LINE__);
             return NULL;
         }
         avioc = avio_alloc_context(avioc_buffer, avioc_buffer_size,
             0, pDataProvider, &ReadPacket, NULL, NULL);
         if (!avioc) {
-            LOG(ERROR) << "FFmpeg error: " << __FILE__ << " " << __LINE__;
+            spdlog::error("FFmpeg error: {0} {1}", __FILE__, __LINE__);
             return NULL;
         }
         ctx->pb = avioc;

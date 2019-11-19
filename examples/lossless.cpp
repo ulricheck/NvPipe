@@ -26,7 +26,6 @@
  */
 
 #include <NvPipe/NvPipe.h>
-#include <NvPipe/Utils/Logger.h>
 
 #include <iostream>
 #include <iomanip>
@@ -34,7 +33,6 @@
 
 #include "utils.h"
 
-simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
 
 
 

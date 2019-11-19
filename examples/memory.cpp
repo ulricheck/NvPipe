@@ -26,7 +26,6 @@
  */
 
 #include <NvPipe/NvPipe.h>
-#include <NvPipe/Utils/Logger.h>
 
 #include "utils.h"
 
@@ -35,7 +34,6 @@
 
 #include <cuda_runtime_api.h>
 
-simplelogger::Logger *logger = simplelogger::LoggerFactory::CreateConsoleLogger();
 
 
 int main(int argc, char* argv[])
