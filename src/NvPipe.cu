@@ -596,6 +596,84 @@ public:
 
 #endif
 
+    std::vector<uint8_t> getSPS() {
+
+        if (!this->encoder) {
+            // log error
+            return {};
+        }
+
+        uint32_t outSize = 0;
+        char tmpHeader[1024];
+        NV_ENC_SEQUENCE_PARAM_PAYLOAD spspps;
+
+        NVENCSTATUS nvStatus = NV_ENC_SUCCESS;
+        std::memset(&spspps, 0, sizeof(spspps));
+        std::memset(tmpHeader, 0, sizeof(tmpHeader));
+
+        spspps.spsppsBuffer = tmpHeader;
+        spspps.inBufferSize = sizeof(tmpHeader);
+        spspps.outSPSPPSPayloadSize = &outSize;
+        SET_VER(spspps, NV_ENC_SEQUENCE_PARAM_PAYLOAD);
+
+
+        // get SPS PPS
+        nvStatus = this->encoder->NvEncGetSequenceParams(&spspps);
+        if (nvStatus != NV_ENC_SUCCESS) {
+            // log error
+            return {};
+        }
+
+        // Get SPS
+        char *sps = tmpHeader;
+        unsigned int i_sps = 4;
+        
+        while (tmpHeader[i_sps    ] != 0x00
+            || tmpHeader[i_sps + 1] != 0x00
+            || tmpHeader[i_sps + 2] != 0x00
+            || tmpHeader[i_sps + 3] != 0x01)
+        {
+            i_sps += 1;
+            if (i_sps >= outSize)
+            {
+                // log error ("+++ Invalid SPS/PPS +++\n");
+                return {};
+            }
+        }
+
+        // Get PPS
+        char *pps = tmpHeader + i_sps;
+        unsigned int i_pps = outSize - i_sps;
+
+        // Allocate memory for SPS
+        if((_sps = (char*) malloc(i_sps)) == NULL) {
+            // log error("video encoder: get sps/pps failed - alloc sps failed.\n");
+            return {};
+        }
+        // Allocate memory for PPS
+        if((_pps = (char*) malloc(i_pps)) == NULL) {
+            free(_sps);
+            _sps = NULL;
+            // log error("video encoder: get sps/pps failed - alloc pps failed.\n");
+            return {};
+        }
+
+        bcopy(sps, _sps, sizeof(i_sps));
+        bcopy(pps, _pps, sizeof(i_pps));
+        _spslen = i_sps;
+        _ppslen = i_pps;
+
+
+
+        return {};
+    }
+
+
+    std::vector<uint8_t> getPPS() {
+
+        return {};
+    }
+
 private:
     void recreate(uint32_t width, uint32_t height)
     {
